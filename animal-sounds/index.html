@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>どうぶつのこえ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            max-width: 600px;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        .animal-display {
+            font-size: 150px;
+            margin: 20px 0;
+            line-height: 1;
+        }
+        .sound-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .sound-btn {
+            padding: 20px;
+            font-size: 1.8em;
+            border: 3px solid #333;
+            border-radius: 15px;
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .sound-btn:hover {
+            background: #f0f0f0;
+            transform: scale(1.05);
+        }
+        .sound-btn:active {
+            transform: scale(0.95);
+        }
+        .message {
+            font-size: 1.8em;
+            margin-top: 20px;
+            height: 40px;
+        }
+        .correct {
+            color: #4CAF50;
+            animation: bounce 0.5s;
+        }
+        .wrong {
+            color: #f44336;
+            animation: shake 0.5s;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .score {
+            font-size: 1.5em;
+            margin-top: 20px;
+            color: #666;
+        }
+        .play-sound {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 1.5em;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .play-sound:hover {
+            background: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>どうぶつのこえ🐾</h1>
+        <div class="animal-display" id="animalDisplay"></div>
+        <button class="play-sound" onclick="playSound()">なきごえをきく🔊</button>
+        <div class="sound-buttons">
+            <button class="sound-btn" onclick="checkSound('ワンワン')">ワンワン</button>
+            <button class="sound-btn" onclick="checkSound('ニャー')">ニャー</button>
+            <button class="sound-btn" onclick="checkSound('モー')">モー</button>
+            <button class="sound-btn" onclick="checkSound('ブーブー')">ブーブー</button>
+            <button class="sound-btn" onclick="checkSound('コケコッコー')">コケコッコー</button>
+            <button class="sound-btn" onclick="checkSound('ピヨピヨ')">ピヨピヨ</button>
+        </div>
+        <div class="message" id="message"></div>
+        <div class="score">せいかい: <span id="score">0</span></div>
+    </div>
+
+    <script>
+        const animals = [
+            { emoji: '🐕', sound: 'ワンワン', audio: 'woof' },
+            { emoji: '🐈', sound: 'ニャー', audio: 'meow' },
+            { emoji: '🐄', sound: 'モー', audio: 'moo' },
+            { emoji: '🐷', sound: 'ブーブー', audio: 'oink' },
+            { emoji: '🐓', sound: 'コケコッコー', audio: 'cockadoodledoo' },
+            { emoji: '🐤', sound: 'ピヨピヨ', audio: 'chirp' }
+        ];
+        
+        let currentAnimal;
+        let score = 0;
+        
+        // 音声を再生する関数（実際の音声ファイルがないため、テキスト読み上げを使用）
+        function playSound() {
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(currentAnimal.sound);
+                utterance.lang = 'ja-JP';
+                utterance.rate = 0.8;
+                speechSynthesis.speak(utterance);
+            }
+        }
+        
+        function newRound() {
+            currentAnimal = animals[Math.floor(Math.random() * animals.length)];
+            document.getElementById('animalDisplay').textContent = currentAnimal.emoji;
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+        }
+        
+        function checkSound(sound) {
+            const messageEl = document.getElementById('message');
+            
+            if (sound === currentAnimal.sound) {
+                messageEl.textContent = 'せいかい！🎉';
+                messageEl.className = 'message correct';
+                score++;
+                document.getElementById('score').textContent = score;
+                
+                setTimeout(() => {
+                    newRound();
+                }, 1500);
+            } else {
+                messageEl.textContent = 'もういちど！';
+                messageEl.className = 'message wrong';
+            }
+        }
+        
+        // ゲーム開始
+        newRound();
+    </script>
+</body>
+</html>

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ふうせんわり</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 100%);
+            position: relative;
+            height: 100vh;
+        }
+        .game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px 40px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+        .score, .timer {
+            font-size: 1.8em;
+            color: #666;
+            margin: 5px 0;
+        }
+        .balloon {
+            position: absolute;
+            cursor: pointer;
+            font-size: 240px;
+            transition: transform 0.1s;
+            user-select: none;
+            animation: float linear;
+        }
+        .balloon:hover {
+            transform: scale(1.1);
+        }
+        @keyframes float {
+            from {
+                transform: translateY(100vh);
+            }
+            to {
+                transform: translateY(-200px);
+            }
+        }
+        .pop {
+            position: absolute;
+            font-size: 100px;
+            animation: pop-animation 0.5s ease-out forwards;
+            pointer-events: none;
+        }
+        @keyframes pop-animation {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+        .cloud {
+            position: absolute;
+            font-size: 60px;
+            opacity: 0.7;
+            animation: drift 20s linear infinite;
+        }
+        @keyframes drift {
+            from {
+                transform: translateX(-100px);
+            }
+            to {
+                transform: translateX(calc(100vw + 100px));
+            }
+        }
+        .start-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: white;
+            padding: 30px 50px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 20;
+        }
+        .start-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.8em;
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .start-btn:hover {
+            background: #FF5252;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <div class="header">
+            <h1>ふうせんわり🎈</h1>
+            <div class="score">わったかず: <span id="score">0</span></div>
+            <div class="timer">のこりじかん: <span id="timer">60</span>びょう</div>
+        </div>
+        <div class="start-message" id="startMessage">
+            <h2>ふうせんを タップして わろう！</h2>
+            <p style="font-size: 1.3em; color: #666;">1ぷんかん たくさん わってね！</p>
+            <button class="start-btn" onclick="startGame()">スタート！</button>
+        </div>
+        <div class="start-message" id="endMessage" style="display: none;">
+            <h2>おわり！</h2>
+            <p style="font-size: 2em; color: #4CAF50;"><span id="finalScore">0</span>こ わったよ！</p>
+            <button class="start-btn" onclick="resetGame()">もういちど</button>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let gameActive = false;
+        let balloonInterval;
+        let timerInterval;
+        let timeLeft = 60;
+        let audioContext;
+        let balloonPositions = [];
+        
+        const balloonEmojis = ['🎈', '🎈', '🎈', '🎈', '🎈'];
+        const balloonColors = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#95E1D3', '#FF9FF3'];
+        
+        // 音声コンテキストの初期化
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        // ポップ音を再生
+        function playPopSound() {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            // 楽しげな音の設定
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
+            oscillator.frequency.exponentialRampToValueAtTime(400, audioContext.currentTime + 0.2);
+            
+            gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.3);
+            
+            // 追加の高音
+            const oscillator2 = audioContext.createOscillator();
+            const gainNode2 = audioContext.createGain();
+            
+            oscillator2.connect(gainNode2);
+            gainNode2.connect(audioContext.destination);
+            
+            oscillator2.type = 'square';
+            oscillator2.frequency.setValueAtTime(1600, audioContext.currentTime);
+            oscillator2.frequency.exponentialRampToValueAtTime(2400, audioContext.currentTime + 0.05);
+            
+            gainNode2.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+            
+            oscillator2.start(audioContext.currentTime);
+            oscillator2.stop(audioContext.currentTime + 0.1);
+        }
+        
+        function createBalloon() {
+            if (!gameActive) return;
+            
+            const balloon = document.createElement('div');
+            balloon.className = 'balloon';
+            balloon.textContent = balloonEmojis[Math.floor(Math.random() * balloonEmojis.length)];
+            
+            const colorIndex = Math.floor(Math.random() * balloonColors.length);
+            balloon.style.color = balloonColors[colorIndex];
+            
+            // 風船が重ならないように位置を決定
+            let xPos;
+            let attempts = 0;
+            const balloonWidth = 300;
+            const minDistance = balloonWidth + 50;
+            
+            do {
+                xPos = Math.random() * (window.innerWidth - balloonWidth);
+                attempts++;
+            } while (attempts < 10 && balloonPositions.some(pos => 
+                Math.abs(pos - xPos) < minDistance
+            ));
+            
+            balloon.style.left = xPos + 'px';
+            balloonPositions.push(xPos);
+            
+            const duration = 10 + Math.random() * 6;
+            balloon.style.animationDuration = duration + 's';
+            
+            balloon.addEventListener('click', popBalloon);
+            balloon.addEventListener('touchstart', popBalloon);
+            
+            document.getElementById('gameContainer').appendChild(balloon);
+            
+            setTimeout(() => {
+                if (balloon.parentNode) {
+                    balloon.remove();
+                    // 位置リストから削除
+                    const index = balloonPositions.indexOf(xPos);
+                    if (index > -1) {
+                        balloonPositions.splice(index, 1);
+                    }
+                }
+            }, duration * 1000);
+        }
+        
+        function popBalloon(e) {
+            e.preventDefault();
+            const balloon = e.target;
+            
+            if (!balloon.classList.contains('balloon')) return;
+            
+            const pop = document.createElement('div');
+            pop.className = 'pop';
+            pop.textContent = '💥';
+            pop.style.left = balloon.style.left;
+            pop.style.bottom = (window.innerHeight - balloon.getBoundingClientRect().bottom) + 'px';
+            
+            document.getElementById('gameContainer').appendChild(pop);
+            
+            balloon.remove();
+            score++;
+            document.getElementById('score').textContent = score;
+            
+            // 位置リストから削除
+            const xPos = parseFloat(balloon.style.left);
+            const index = balloonPositions.indexOf(xPos);
+            if (index > -1) {
+                balloonPositions.splice(index, 1);
+            }
+            
+            // 効果音を再生
+            playPopSound();
+            
+            setTimeout(() => {
+                pop.remove();
+            }, 500);
+        }
+        
+        function createCloud() {
+            const cloud = document.createElement('div');
+            cloud.className = 'cloud';
+            cloud.textContent = '☁️';
+            cloud.style.top = Math.random() * 200 + 'px';
+            cloud.style.animationDelay = Math.random() * 10 + 's';
+            document.getElementById('gameContainer').appendChild(cloud);
+        }
+        
+        function updateTimer() {
+            timeLeft--;
+            document.getElementById('timer').textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+        
+        function startGame() {
+            gameActive = true;
+            score = 0;
+            timeLeft = 60;
+            balloonPositions = [];
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('timer').textContent = timeLeft;
+            document.getElementById('startMessage').style.display = 'none';
+            document.getElementById('endMessage').style.display = 'none';
+            
+            // 音声の初期化
+            initAudio();
+            
+            // 雲を作成
+            for (let i = 0; i < 3; i++) {
+                createCloud();
+            }
+            
+            // 風船を定期的に作成（頻度を70%に削減）
+            balloonInterval = setInterval(createBalloon, 1400);
+            
+            // タイマーを開始
+            timerInterval = setInterval(updateTimer, 1000);
+            
+            // 最初の風船をすぐに作成（数を減らす）
+            for (let i = 0; i < 2; i++) {
+                setTimeout(createBalloon, i * 500);
+            }
+        }
+        
+        function endGame() {
+            gameActive = false;
+            clearInterval(balloonInterval);
+            clearInterval(timerInterval);
+            
+            // 残った風船を削除
+            const balloons = document.querySelectorAll('.balloon');
+            balloons.forEach(balloon => balloon.remove());
+            
+            balloonPositions = [];
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('endMessage').style.display = 'block';
+        }
+        
+        function resetGame() {
+            document.getElementById('endMessage').style.display = 'none';
+            document.getElementById('startMessage').style.display = 'block';
+            
+            // 雲を削除
+            const clouds = document.querySelectorAll('.cloud');
+            clouds.forEach(cloud => cloud.remove());
+        }
+    </script>
+</body>
+</html>

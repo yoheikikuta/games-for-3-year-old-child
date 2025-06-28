@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>いろあてゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        .color-display {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            border-radius: 20px;
+            border: 5px solid #333;
+        }
+        .color-buttons {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .color-btn {
+            width: 100px;
+            height: 100px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 1.5em;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+        }
+        .color-btn:hover {
+            transform: scale(1.1);
+        }
+        .color-btn:active {
+            transform: scale(0.95);
+        }
+        .message {
+            font-size: 1.8em;
+            margin-top: 20px;
+            height: 40px;
+        }
+        .correct {
+            color: #4CAF50;
+            animation: bounce 0.5s;
+        }
+        .wrong {
+            color: #f44336;
+            animation: shake 0.5s;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        .score {
+            font-size: 1.5em;
+            margin-top: 20px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>いろあてゲーム🎨</h1>
+        <div class="color-display" id="colorDisplay"></div>
+        <div class="color-buttons">
+            <button class="color-btn" style="background-color: #FF6B6B;" onclick="checkColor('あか')">あか</button>
+            <button class="color-btn" style="background-color: #0066FF;" onclick="checkColor('あお')">あお</button>
+            <button class="color-btn" style="background-color: #FFE66D;" onclick="checkColor('きいろ')">きいろ</button>
+            <button class="color-btn" style="background-color: #00CC00;" onclick="checkColor('みどり')">みどり</button>
+            <button class="color-btn" style="background-color: #FF9FF3;" onclick="checkColor('ピンク')">ピンク</button>
+            <button class="color-btn" style="background-color: #FFA500;" onclick="checkColor('オレンジ')">オレンジ</button>
+        </div>
+        <div class="message" id="message"></div>
+        <div class="score">せいかい: <span id="score">0</span></div>
+    </div>
+
+    <script>
+        const colors = [
+            { name: 'あか', color: '#FF6B6B' },
+            { name: 'あお', color: '#0066FF' },
+            { name: 'きいろ', color: '#FFE66D' },
+            { name: 'みどり', color: '#00CC00' },
+            { name: 'ピンク', color: '#FF9FF3' },
+            { name: 'オレンジ', color: '#FFA500' }
+        ];
+        
+        let currentColor;
+        let score = 0;
+        
+        function newRound() {
+            currentColor = colors[Math.floor(Math.random() * colors.length)];
+            document.getElementById('colorDisplay').style.backgroundColor = currentColor.color;
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+        }
+        
+        function checkColor(colorName) {
+            const messageEl = document.getElementById('message');
+            
+            if (colorName === currentColor.name) {
+                messageEl.textContent = 'せいかい！🎉';
+                messageEl.className = 'message correct';
+                score++;
+                document.getElementById('score').textContent = score;
+                
+                setTimeout(() => {
+                    newRound();
+                }, 1500);
+            } else {
+                messageEl.textContent = 'もういちど！';
+                messageEl.className = 'message wrong';
+            }
+        }
+        
+        // ゲーム開始
+        newRound();
+    </script>
+</body>
+</html>

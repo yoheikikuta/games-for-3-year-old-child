@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>まるばつキャッチ</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            position: relative;
+            height: 100vh;
+        }
+        .game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px 40px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+        .game-info {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+        }
+        .score, .timer {
+            color: #666;
+        }
+        .game-area {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            cursor: none;
+        }
+        .circle {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            background: #4CAF50;
+            border-radius: 50%;
+            border: 5px solid #2E7D32;
+            cursor: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            color: white;
+            z-index: 5;
+            user-select: none;
+            pointer-events: none;
+            transition: none;
+        }
+        .cross {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            color: #f44336;
+            font-weight: bold;
+            transition: all 0.1s;
+        }
+        .start-screen, .end-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 20;
+        }
+        .start-screen h2, .end-screen h2 {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        .instructions {
+            font-size: 1.3em;
+            color: #666;
+            margin-bottom: 30px;
+            line-height: 1.6;
+        }
+        .btn {
+            padding: 15px 40px;
+            font-size: 1.8em;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #1976D2;
+        }
+        .final-score {
+            font-size: 3em;
+            color: #4CAF50;
+            margin: 20px 0;
+        }
+        .explosion {
+            position: absolute;
+            font-size: 80px;
+            animation: explode 0.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 6;
+        }
+        @keyframes explode {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="header">
+            <h1>まるばつキャッチ⭕❌</h1>
+            <div class="game-info">
+                <div class="score">とくてん: <span id="score">0</span></div>
+                <div class="timer">じかん: <span id="timer">60</span></div>
+            </div>
+        </div>
+        
+        <div class="game-area" id="gameArea">
+            <div class="circle" id="circle">⭕</div>
+        </div>
+        
+        <div class="start-screen" id="startScreen">
+            <h2>まるばつキャッチ</h2>
+            <div class="instructions">
+                ❌ がじどうで たくさん あらわれるよ！<br>
+                キーボードをたたくと もっと ふえるよ！<br>
+                ⭕ をうごかして ❌ にぶつけよう！<br>
+                1ぷんかん たくさん つかまえてね！
+            </div>
+            <button class="btn" onclick="startGame()">スタート！</button>
+        </div>
+        
+        <div class="end-screen" id="endScreen" style="display: none;">
+            <h2>おわり！</h2>
+            <div class="final-score" id="finalScore">0</div>
+            <div class="instructions">てん ゲットしたよ！</div>
+            <button class="btn" onclick="resetGame()">もういちど</button>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let timeLeft = 60;
+        let gameActive = false;
+        let timerInterval;
+        let autoGenerateInterval;
+        let crosses = [];
+        let crossIdCounter = 0;
+        let audioContext;
+        
+        const circle = document.getElementById('circle');
+        const gameArea = document.getElementById('gameArea');
+        
+        // 音声コンテキストの初期化
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        // 衝突音を再生
+        function playHitSound() {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.type = 'square';
+            oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
+            
+            gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+        
+        // 10点ごとのお祝いメロディー
+        function playBonusSound() {
+            if (!audioContext) return;
+            
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // C, E, G, C (高)
+            const duration = 0.15;
+            
+            notes.forEach((freq, index) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime + index * duration);
+                
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime + index * duration);
+                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + index * duration + 0.02);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * duration + duration);
+                
+                oscillator.start(audioContext.currentTime + index * duration);
+                oscillator.stop(audioContext.currentTime + index * duration + duration);
+            });
+            
+            // 最後に高音のキラキラ音
+            setTimeout(() => {
+                const oscillator2 = audioContext.createOscillator();
+                const gainNode2 = audioContext.createGain();
+                
+                oscillator2.connect(gainNode2);
+                gainNode2.connect(audioContext.destination);
+                
+                oscillator2.type = 'triangle';
+                oscillator2.frequency.setValueAtTime(2093, audioContext.currentTime); // C7
+                oscillator2.frequency.exponentialRampToValueAtTime(4186, audioContext.currentTime + 0.3); // C8
+                
+                gainNode2.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode2.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                
+                oscillator2.start(audioContext.currentTime);
+                oscillator2.stop(audioContext.currentTime + 0.4);
+            }, notes.length * duration * 1000);
+        }
+        
+        // マルの初期位置
+        let circleX = window.innerWidth / 2;
+        let circleY = window.innerHeight / 2;
+        circle.style.left = circleX + 'px';
+        circle.style.top = circleY + 'px';
+        circle.style.transform = 'translate(-50%, -50%)';
+        
+        // マウス追従機能
+        function moveCircle(e) {
+            if (!gameActive) return;
+            
+            let targetX, targetY;
+            
+            if (e.type === "touchmove") {
+                targetX = e.touches[0].clientX;
+                targetY = e.touches[0].clientY;
+            } else {
+                targetX = e.clientX;
+                targetY = e.clientY;
+            }
+            
+            // マルをマウス位置に移動
+            circleX = targetX;
+            circleY = targetY;
+            
+            circle.style.left = circleX + 'px';
+            circle.style.top = circleY + 'px';
+            
+            checkCollisions();
+        }
+        
+        // イベントリスナー
+        document.addEventListener('mousemove', moveCircle, false);
+        document.addEventListener('touchmove', moveCircle, false);
+        
+        // キーボードイベント
+        document.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            createCross();
+        });
+        
+        // バツを作成
+        function createCross() {
+            const cross = document.createElement('div');
+            cross.className = 'cross';
+            cross.textContent = '❌';
+            cross.id = 'cross-' + crossIdCounter++;
+            
+            // ランダムな位置に配置
+            const maxX = window.innerWidth - 80;
+            const maxY = window.innerHeight - 80;
+            const x = Math.random() * maxX;
+            const y = Math.random() * maxY;
+            
+            cross.style.left = x + 'px';
+            cross.style.top = y + 'px';
+            
+            // ランダムな速度と方向
+            const speed = 1 + Math.random() * 2;
+            const angle = Math.random() * Math.PI * 2;
+            const vx = Math.cos(angle) * speed;
+            const vy = Math.sin(angle) * speed;
+            
+            gameArea.appendChild(cross);
+            
+            crosses.push({
+                element: cross,
+                x: x,
+                y: y,
+                vx: vx,
+                vy: vy
+            });
+        }
+        
+        // バツの移動
+        function moveCrosses() {
+            crosses.forEach((crossData, index) => {
+                crossData.x += crossData.vx;
+                crossData.y += crossData.vy;
+                
+                // 壁で跳ね返る
+                if (crossData.x <= 0 || crossData.x >= window.innerWidth - 80) {
+                    crossData.vx = -crossData.vx;
+                }
+                if (crossData.y <= 0 || crossData.y >= window.innerHeight - 80) {
+                    crossData.vy = -crossData.vy;
+                }
+                
+                crossData.element.style.left = crossData.x + 'px';
+                crossData.element.style.top = crossData.y + 'px';
+            });
+        }
+        
+        // 衝突判定
+        function checkCollisions() {
+            const circleRect = circle.getBoundingClientRect();
+            
+            crosses.forEach((crossData, index) => {
+                const crossRect = crossData.element.getBoundingClientRect();
+                
+                if (circleRect.left < crossRect.right &&
+                    circleRect.right > crossRect.left &&
+                    circleRect.top < crossRect.bottom &&
+                    circleRect.bottom > crossRect.top) {
+                    
+                    // 衝突した！
+                    createExplosion(crossRect.left + 40, crossRect.top + 40);
+                    crossData.element.remove();
+                    crosses.splice(index, 1);
+                    score++;
+                    document.getElementById('score').textContent = score;
+                    
+                    // 効果音を再生
+                    playHitSound();
+                    
+                    // 10点ごとにボーナス音
+                    if (score % 10 === 0 && score > 0) {
+                        playBonusSound();
+                    }
+                }
+            });
+        }
+        
+        // 爆発エフェクト
+        function createExplosion(x, y) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.textContent = '💥';
+            explosion.style.left = x + 'px';
+            explosion.style.top = y + 'px';
+            
+            gameArea.appendChild(explosion);
+            
+            setTimeout(() => {
+                explosion.remove();
+            }, 500);
+        }
+        
+        // ゲームループ
+        function gameLoop() {
+            if (!gameActive) return;
+            
+            moveCrosses();
+            checkCollisions();
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // タイマー
+        function updateTimer() {
+            timeLeft--;
+            document.getElementById('timer').textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+        
+        // ゲーム開始
+        function startGame() {
+            gameActive = true;
+            score = 0;
+            timeLeft = 60;
+            crosses = [];
+            crossIdCounter = 0;
+            
+            // 音声の初期化
+            initAudio();
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('timer').textContent = timeLeft;
+            document.getElementById('startScreen').style.display = 'none';
+            
+            // 最初のバツをいくつか作成
+            for (let i = 0; i < 3; i++) {
+                setTimeout(createCross, i * 500);
+            }
+            
+            // 自動生成を開始（1秒に5個 = 200ミリ秒ごとに1個）
+            autoGenerateInterval = setInterval(createCross, 200);
+            
+            timerInterval = setInterval(updateTimer, 1000);
+            gameLoop();
+        }
+        
+        // ゲーム終了
+        function endGame() {
+            gameActive = false;
+            clearInterval(timerInterval);
+            clearInterval(autoGenerateInterval);
+            
+            // 残ったバツを削除
+            crosses.forEach(crossData => {
+                crossData.element.remove();
+            });
+            crosses = [];
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('endScreen').style.display = 'block';
+        }
+        
+        // リセット
+        function resetGame() {
+            document.getElementById('endScreen').style.display = 'none';
+            document.getElementById('startScreen').style.display = 'block';
+            
+            // マルを初期位置に戻す
+            circleX = window.innerWidth / 2;
+            circleY = window.innerHeight / 2;
+            circle.style.left = circleX + 'px';
+            circle.style.top = circleY + 'px';
+            circle.style.transform = 'translate(-50%, -50%)';
+        }
+    </script>
+</body>
+</html>

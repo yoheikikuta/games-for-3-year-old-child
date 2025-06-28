@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>かたちあわせパズル</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+        .game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        .puzzle-area {
+            display: flex;
+            gap: 50px;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+        }
+        .shape-slots, .shape-pieces {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+        .slot {
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            border: 3px dashed #ccc;
+            border-radius: 10px;
+            transition: all 0.3s;
+            position: relative;
+        }
+        .shape {
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            border: 3px solid #333;
+            border-radius: 10px;
+            transition: all 0.3s;
+            background: white;
+        }
+        .shape {
+            cursor: move;
+        }
+        .shape.dragging {
+            opacity: 0.5;
+        }
+        .slot.drag-over {
+            background: #e0e0e0;
+            border-color: #666;
+        }
+        .slot.filled {
+            border-color: #4CAF50;
+            background: #e8f5e9;
+            color: #333;
+        }
+        .slot-placeholder {
+            color: #ddd;
+            font-size: 60px;
+        }
+        .slot.filled .slot-placeholder {
+            display: none;
+        }
+        .message {
+            font-size: 1.8em;
+            margin-top: 20px;
+            height: 40px;
+        }
+        .success {
+            color: #4CAF50;
+            animation: bounce 0.5s;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        .reset-btn {
+            margin-top: 20px;
+            padding: 15px 30px;
+            font-size: 1.5em;
+            background: #2196F3;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .reset-btn:hover {
+            background: #1976D2;
+        }
+        .instructions {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>かたちあわせパズル🧩</h1>
+        <p class="instructions">おなじかたちのところに ドラッグしてね！</p>
+        <div class="puzzle-area">
+            <div class="shape-slots">
+                <div class="slot" data-shape="circle" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"><span class="slot-placeholder">⭕</span></div>
+                <div class="slot" data-shape="square" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"><span class="slot-placeholder">⬜</span></div>
+                <div class="slot" data-shape="triangle" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"><span class="slot-placeholder">🔺</span></div>
+                <div class="slot" data-shape="star" ondrop="drop(event)" ondragover="allowDrop(event)" ondragleave="dragLeave(event)"><span class="slot-placeholder">⭐</span></div>
+            </div>
+            <div class="shape-pieces" id="shapePieces">
+                <div class="shape" data-shape="square" draggable="true" ondragstart="drag(event)">⬜</div>
+                <div class="shape" data-shape="circle" draggable="true" ondragstart="drag(event)">⭕</div>
+                <div class="shape" data-shape="star" draggable="true" ondragstart="drag(event)">⭐</div>
+                <div class="shape" data-shape="triangle" draggable="true" ondragstart="drag(event)">🔺</div>
+            </div>
+        </div>
+        <div class="message" id="message"></div>
+        <button class="reset-btn" onclick="resetGame()">もういちど</button>
+    </div>
+
+    <script>
+        let draggedElement = null;
+        let completedShapes = 0;
+        
+        function drag(ev) {
+            draggedElement = ev.target;
+            ev.target.classList.add('dragging');
+        }
+        
+        function allowDrop(ev) {
+            ev.preventDefault();
+            ev.currentTarget.classList.add('drag-over');
+        }
+        
+        function dragLeave(ev) {
+            ev.currentTarget.classList.remove('drag-over');
+        }
+        
+        function drop(ev) {
+            ev.preventDefault();
+            ev.currentTarget.classList.remove('drag-over');
+            
+            const slot = ev.currentTarget;
+            const slotShape = slot.getAttribute('data-shape');
+            const draggedShape = draggedElement.getAttribute('data-shape');
+            
+            const hasShape = slot.querySelector('.shape');
+            
+            if (slotShape === draggedShape && !hasShape) {
+                slot.appendChild(draggedElement);
+                slot.classList.add('filled');
+                draggedElement.classList.remove('dragging');
+                draggedElement.draggable = false;
+                completedShapes++;
+                
+                if (completedShapes === 4) {
+                    document.getElementById('message').textContent = 'すごい！ぜんぶできたね！🎉';
+                    document.getElementById('message').className = 'message success';
+                }
+            } else {
+                draggedElement.classList.remove('dragging');
+            }
+        }
+        
+        function resetGame() {
+            const slots = document.querySelectorAll('.slot');
+            const shapePieces = document.getElementById('shapePieces');
+            
+            slots.forEach(slot => {
+                const shape = slot.querySelector('.shape');
+                if (shape) {
+                    shape.draggable = true;
+                    shapePieces.appendChild(shape);
+                    slot.classList.remove('filled');
+                }
+            });
+            
+            completedShapes = 0;
+            document.getElementById('message').textContent = '';
+            document.getElementById('message').className = 'message';
+        }
+        
+        // タッチデバイス対応
+        document.addEventListener('DOMContentLoaded', function() {
+            const shapes = document.querySelectorAll('.shape');
+            shapes.forEach(shape => {
+                shape.addEventListener('touchstart', handleTouchStart, {passive: false});
+                shape.addEventListener('touchmove', handleTouchMove, {passive: false});
+                shape.addEventListener('touchend', handleTouchEnd, {passive: false});
+            });
+        });
+        
+        let touchItem = null;
+        
+        function handleTouchStart(e) {
+            touchItem = e.target;
+            e.target.classList.add('dragging');
+        }
+        
+        function handleTouchMove(e) {
+            e.preventDefault();
+            const touch = e.touches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            
+            if (element && element.classList.contains('slot')) {
+                element.classList.add('drag-over');
+            }
+        }
+        
+        function handleTouchEnd(e) {
+            const touch = e.changedTouches[0];
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            
+            if (element && element.classList.contains('slot')) {
+                const slotShape = element.getAttribute('data-shape');
+                const draggedShape = touchItem.getAttribute('data-shape');
+                
+                const hasShape = element.querySelector('.shape');
+                
+                if (slotShape === draggedShape && !hasShape) {
+                    element.appendChild(touchItem);
+                    element.classList.add('filled');
+                    touchItem.draggable = false;
+                    completedShapes++;
+                    
+                    if (completedShapes === 4) {
+                        document.getElementById('message').textContent = 'すごい！ぜんぶできたね！🎉';
+                        document.getElementById('message').className = 'message success';
+                    }
+                }
+            }
+            
+            touchItem.classList.remove('dragging');
+            document.querySelectorAll('.slot').forEach(slot => {
+                slot.classList.remove('drag-over');
+            });
+        }
+    </script>
+</body>
+</html>
