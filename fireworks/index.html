@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>はなびゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #001122 0%, #002244 50%, #003366 100%);
+            position: relative;
+            height: 100vh;
+        }
+        .game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px 40px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            backdrop-filter: blur(10px);
+        }
+        h1 {
+            color: #fff;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        .instruction {
+            color: #fff;
+            font-size: 1.3em;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+        }
+        .firework-trail {
+            position: absolute;
+            width: 4px;
+            background: linear-gradient(to bottom, transparent, #fff);
+            animation: launch linear forwards;
+            pointer-events: none;
+        }
+        @keyframes launch {
+            from {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateY(var(--launch-height));
+                opacity: 0;
+            }
+        }
+        .firework-burst {
+            position: absolute;
+            pointer-events: none;
+        }
+        .spark {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            animation: explode ease-out forwards;
+        }
+        @keyframes explode {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(0);
+                opacity: 0;
+            }
+        }
+        .star {
+            position: absolute;
+            color: white;
+            font-size: 2px;
+            animation: twinkle 3s infinite;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 30px 50px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            z-index: 20;
+        }
+        .message h2 {
+            color: #fff;
+            font-size: 2em;
+            margin-bottom: 20px;
+        }
+        .message p {
+            color: #fff;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+        }
+        .start-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.8em;
+            background: #FF6B6B;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .start-btn:hover {
+            background: #FF5252;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <div class="header">
+            <h1>はなびゲーム🎆</h1>
+            <p class="instruction">キーボードを おして はなびを うちあげよう！</p>
+        </div>
+        <div class="message" id="startMessage">
+            <h2>はなびを うちあげよう！</h2>
+            <p>キーボードの どのキーでも おして<br>きれいな はなびを みよう！</p>
+            <button class="start-btn" onclick="startGame()">はじめる！</button>
+        </div>
+    </div>
+
+    <script>
+        let gameActive = false;
+        let audioContext;
+        const fireworkColors = [
+            ['#FF6B6B', '#FFB3B3'],
+            ['#4ECDC4', '#A8E6E1'],
+            ['#FFE66D', '#FFF4B3'],
+            ['#95E1D3', '#C7F0E8'],
+            ['#FF9FF3', '#FFD1F8'],
+            ['#FD79A8', '#FDB7D1'],
+            ['#74B9FF', '#B3D7FF'],
+            ['#A29BFE', '#C7C3FE']
+        ];
+        
+        // 音声コンテキストの初期化
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        // 花火の打ち上げ音
+        function playLaunchSound() {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            oscillator.type = 'sawtooth';
+            oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+            oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.5);
+            
+            gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.5);
+        }
+        
+        // 花火の爆発音
+        function playBurstSound(size) {
+            if (!audioContext) return;
+            
+            // メインの爆発音
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            const filter = audioContext.createBiquadFilter();
+            
+            oscillator.connect(filter);
+            filter.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            filter.type = 'lowpass';
+            filter.frequency.value = 1000 + size * 20;
+            
+            oscillator.type = 'noise';
+            const noiseBuffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.2, audioContext.sampleRate);
+            const noiseData = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < noiseData.length; i++) {
+                noiseData[i] = Math.random() * 2 - 1;
+            }
+            
+            const noiseSource = audioContext.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            noiseSource.connect(filter);
+            
+            gainNode.gain.setValueAtTime(0.3 + size * 0.002, audioContext.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+            
+            noiseSource.start(audioContext.currentTime);
+            noiseSource.stop(audioContext.currentTime + 0.2);
+            
+            // キラキラ音
+            for (let i = 0; i < 3; i++) {
+                const osc = audioContext.createOscillator();
+                const gain = audioContext.createGain();
+                
+                osc.connect(gain);
+                gain.connect(audioContext.destination);
+                
+                osc.type = 'sine';
+                osc.frequency.value = 1000 + Math.random() * 2000 + size * 10;
+                
+                gain.gain.setValueAtTime(0, audioContext.currentTime + i * 0.05);
+                gain.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + i * 0.05 + 0.01);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.05 + 0.1);
+                
+                osc.start(audioContext.currentTime + i * 0.05);
+                osc.stop(audioContext.currentTime + i * 0.05 + 0.1);
+            }
+        }
+        
+        // 星を作成
+        function createStars() {
+            for (let i = 0; i < 100; i++) {
+                const star = document.createElement('div');
+                star.className = 'star';
+                star.textContent = '✦';
+                star.style.left = Math.random() * 100 + '%';
+                star.style.top = Math.random() * 50 + '%';
+                star.style.animationDelay = Math.random() * 3 + 's';
+                document.getElementById('gameContainer').appendChild(star);
+            }
+        }
+        
+        // 花火を作成
+        function createFirework(x) {
+            if (!gameActive) return;
+            
+            const launchHeight = 40 + Math.random() * 30; // 40-70%の高さ
+            const size = 50 + Math.random() * 150; // 花火のサイズ
+            
+            // 打ち上げの軌跡
+            const trail = document.createElement('div');
+            trail.className = 'firework-trail';
+            trail.style.left = x + 'px';
+            trail.style.bottom = '0';
+            trail.style.height = window.innerHeight * launchHeight / 100 + 'px';
+            trail.style.setProperty('--launch-height', `-${window.innerHeight * launchHeight / 100}px`);
+            trail.style.animationDuration = '0.8s';
+            
+            document.getElementById('gameContainer').appendChild(trail);
+            
+            // 打ち上げ音
+            playLaunchSound();
+            
+            // 爆発をタイミングよく作成
+            setTimeout(() => {
+                createBurst(x, window.innerHeight * (100 - launchHeight) / 100, size);
+                trail.remove();
+            }, 800);
+        }
+        
+        // 花火の爆発
+        function createBurst(x, y, size) {
+            const burst = document.createElement('div');
+            burst.className = 'firework-burst';
+            burst.style.left = x + 'px';
+            burst.style.top = y + 'px';
+            
+            const colorSet = fireworkColors[Math.floor(Math.random() * fireworkColors.length)];
+            const particleCount = 30 + Math.floor(size / 10);
+            
+            // 爆発音
+            playBurstSound(size);
+            
+            // パーティクルを作成
+            for (let i = 0; i < particleCount; i++) {
+                const spark = document.createElement('div');
+                spark.className = 'spark';
+                
+                const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.2;
+                const velocity = size * (0.5 + Math.random() * 0.5);
+                const tx = Math.cos(angle) * velocity;
+                const ty = Math.sin(angle) * velocity + 50; // 重力効果
+                
+                spark.style.background = `radial-gradient(circle, ${colorSet[0]}, ${colorSet[1]})`;
+                spark.style.boxShadow = `0 0 6px ${colorSet[0]}`;
+                spark.style.setProperty('--tx', tx + 'px');
+                spark.style.setProperty('--ty', ty + 'px');
+                spark.style.animationDuration = 1 + Math.random() * 0.5 + 's';
+                
+                burst.appendChild(spark);
+            }
+            
+            document.getElementById('gameContainer').appendChild(burst);
+            
+            // 一定時間後に削除
+            setTimeout(() => {
+                burst.remove();
+            }, 2000);
+        }
+        
+        // キーボードイベント
+        function handleKeyPress(e) {
+            if (!gameActive) return;
+            
+            // ランダムな位置に花火を作成
+            const x = 100 + Math.random() * (window.innerWidth - 200);
+            createFirework(x);
+        }
+        
+        function startGame() {
+            gameActive = true;
+            initAudio();
+            document.getElementById('startMessage').style.display = 'none';
+            
+            // 星を作成
+            createStars();
+            
+            // キーボードイベントを登録
+            document.addEventListener('keydown', handleKeyPress);
+        }
+        
+        // 初期化
+        window.addEventListener('load', () => {
+            // タッチデバイスでも動作するように
+            document.getElementById('gameContainer').addEventListener('click', (e) => {
+                if (gameActive && e.target.id === 'gameContainer') {
+                    createFirework(e.clientX);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
