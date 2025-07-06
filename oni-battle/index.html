@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>おにたいじゲーム</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: linear-gradient(to bottom, #2C3E50 0%, #34495E 100%);
+            color: white;
+        }
+        
+        .game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .game-area {
+            width: 800px;
+            height: 600px;
+            position: relative;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        
+        .house {
+            width: 100%;
+            height: 100px;
+            position: absolute;
+            bottom: 0;
+            background: #8B4513;
+            border-top: 5px solid #654321;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 60px;
+        }
+        
+        .oni {
+            position: absolute;
+            font-size: 80px;
+            cursor: pointer;
+            transition: all 0.1s;
+            user-select: none;
+        }
+        
+        .oni.damaged {
+            animation: shake 0.3s;
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+        
+        .health-bar {
+            position: absolute;
+            width: 60px;
+            height: 8px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .health-fill {
+            height: 100%;
+            background: #FF6B6B;
+            border-radius: 4px;
+            transition: width 0.3s;
+        }
+        
+        .damage-text {
+            position: absolute;
+            font-size: 30px;
+            font-weight: bold;
+            color: #FFE66D;
+            animation: float-up 1s ease-out forwards;
+            pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        @keyframes float-up {
+            0% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+        }
+        
+        .ui-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            background: rgba(0,0,0,0.5);
+            padding: 20px 40px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        }
+        
+        .score-display {
+            font-size: 1.5em;
+            margin: 5px 0;
+        }
+        
+        .wave-display {
+            font-size: 1.8em;
+            margin: 5px 0;
+            color: #FFE66D;
+        }
+        
+        .instruction {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5em;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 30px;
+            border-radius: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+        
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            color: #333;
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            z-index: 100;
+        }
+        
+        .message h2 {
+            margin: 0 0 20px 0;
+            font-size: 2.5em;
+        }
+        
+        .message p {
+            font-size: 1.3em;
+            margin: 10px 0;
+        }
+        
+        .btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.5em;
+            background: #4ECDC4;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #45B7AA;
+        }
+        
+        .particle {
+            position: absolute;
+            font-size: 20px;
+            animation: particle-float 1s ease-out forwards;
+            pointer-events: none;
+        }
+        
+        @keyframes particle-float {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--x), var(--y)) scale(0);
+                opacity: 0;
+            }
+        }
+        
+        .key-hint {
+            position: absolute;
+            bottom: 10px;
+            right: 20px;
+            font-size: 1.2em;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-area" id="gameArea">
+            <div class="ui-container">
+                <div class="wave-display">だい <span id="waveNumber">1</span> ひき</div>
+                <div class="score-display">スコア: <span id="score">0</span></div>
+            </div>
+            
+            <div class="instruction" id="instruction">キーボードをたたいて おにをたおそう！</div>
+            
+            <div class="house">
+                🏠
+            </div>
+            
+            <div class="key-hint">タイプ: <span id="typedKey">?</span></div>
+        </div>
+        
+        <div class="message" id="startMessage">
+            <h2>おにたいじゲーム 👹</h2>
+            <p>がめんのうえから おにがやってくるよ！</p>
+            <p>キーボードをたたいて おにをたおそう！</p>
+            <p>いえにつくまえに 5ひき たおそう！</p>
+            <button class="btn" onclick="startGame()">スタート！</button>
+        </div>
+        
+        <div class="message" id="gameOverMessage" style="display: none;">
+            <h2 id="resultTitle">ゲームオーバー！</h2>
+            <p id="resultText"></p>
+            <p>スコア: <span id="finalScore">0</span></p>
+            <button class="btn" onclick="resetGame()">もういちど！</button>
+        </div>
+    </div>
+    
+    <script>
+        let gameActive = false;
+        let score = 0;
+        let wave = 1;
+        let defeatedOnis = 0;
+        let activeOnis = [];
+        let gameLoop;
+        let spawnInterval;
+        let audioContext;
+        let baseOniHealth = 20;
+        let oniSpeed = 1;
+        
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        function playSound(type) {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'hit') {
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } else if (type === 'defeat') {
+                // 勝利音
+                const notes = [523.25, 659.25, 783.99];
+                notes.forEach((freq, index) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.1);
+                    gain.gain.setValueAtTime(0.3, audioContext.currentTime + index * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.1 + 0.3);
+                    osc.start(audioContext.currentTime + index * 0.1);
+                    osc.stop(audioContext.currentTime + index * 0.1 + 0.3);
+                });
+            } else if (type === 'gameover') {
+                oscillator.frequency.setValueAtTime(150, audioContext.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(50, audioContext.currentTime + 0.5);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            }
+        }
+        
+        function createOni() {
+            const oni = document.createElement('div');
+            oni.className = 'oni';
+            oni.textContent = '👹';
+            
+            // ランダムな横位置
+            const xPos = Math.random() * 600 + 100;
+            oni.style.left = xPos + 'px';
+            oni.style.top = '-100px';
+            
+            // 体力バー
+            const healthBar = document.createElement('div');
+            healthBar.className = 'health-bar';
+            const healthFill = document.createElement('div');
+            healthFill.className = 'health-fill';
+            healthFill.style.width = '100%';
+            healthBar.appendChild(healthFill);
+            oni.appendChild(healthBar);
+            
+            // 鬼のデータ
+            const oniData = {
+                element: oni,
+                x: xPos,
+                y: -100,
+                health: baseOniHealth + (wave - 1) * 10,
+                maxHealth: baseOniHealth + (wave - 1) * 10,
+                healthFill: healthFill
+            };
+            
+            document.getElementById('gameArea').appendChild(oni);
+            activeOnis.push(oniData);
+        }
+        
+        function damageOni(oni) {
+            oni.health--;
+            oni.healthFill.style.width = (oni.health / oni.maxHealth * 100) + '%';
+            
+            // ダメージエフェクト
+            oni.element.classList.add('damaged');
+            setTimeout(() => {
+                oni.element.classList.remove('damaged');
+            }, 300);
+            
+            // ダメージ数字
+            const damageText = document.createElement('div');
+            damageText.className = 'damage-text';
+            damageText.textContent = '-1';
+            damageText.style.left = oni.x + 'px';
+            damageText.style.top = oni.y + 'px';
+            document.getElementById('gameArea').appendChild(damageText);
+            
+            setTimeout(() => {
+                damageText.remove();
+            }, 1000);
+            
+            // パーティクルエフェクト
+            createParticles(oni.x + 40, oni.y + 40);
+            
+            if (oni.health <= 0) {
+                // 鬼を倒した
+                playSound('defeat');
+                oni.element.remove();
+                score += 100 * wave;
+                defeatedOnis++;
+                document.getElementById('score').textContent = score;
+                
+                // クリア判定
+                if (defeatedOnis >= 5) {
+                    endGame(true);
+                }
+                
+                return true;
+            }
+            
+            playSound('hit');
+            return false;
+        }
+        
+        function createParticles(x, y) {
+            const particles = ['✨', '💥', '⭐'];
+            for (let i = 0; i < 5; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.textContent = particles[Math.floor(Math.random() * particles.length)];
+                particle.style.left = x + 'px';
+                particle.style.top = y + 'px';
+                particle.style.setProperty('--x', (Math.random() - 0.5) * 100 + 'px');
+                particle.style.setProperty('--y', (Math.random() - 0.5) * 100 + 'px');
+                document.getElementById('gameArea').appendChild(particle);
+                
+                setTimeout(() => {
+                    particle.remove();
+                }, 1000);
+            }
+        }
+        
+        function moveOnis() {
+            activeOnis = activeOnis.filter(oni => {
+                oni.y += oniSpeed;
+                oni.element.style.top = oni.y + 'px';
+                
+                // 家に到達した
+                if (oni.y > 400) {
+                    oni.element.remove();
+                    endGame(false);
+                    return false;
+                }
+                
+                return true;
+            });
+        }
+        
+        function handleKeyPress(e) {
+            if (!gameActive) return;
+            
+            // キー表示
+            document.getElementById('typedKey').textContent = e.key;
+            
+            // 最も近い鬼にダメージ
+            if (activeOnis.length > 0) {
+                const closestOni = activeOnis.reduce((closest, oni) => {
+                    return oni.y > closest.y ? oni : closest;
+                }, activeOnis[0]);
+                
+                const defeated = damageOni(closestOni);
+                if (defeated) {
+                    activeOnis = activeOnis.filter(o => o !== closestOni);
+                    
+                    // 次の波へ
+                    if (activeOnis.length === 0 && defeatedOnis < 5) {
+                        setTimeout(nextWave, 1000);
+                    }
+                }
+            }
+        }
+        
+        function nextWave() {
+            wave++;
+            document.getElementById('waveNumber').textContent = wave;
+            oniSpeed = 1 + (wave - 1) * 0.3;
+            
+            // 新しい鬼を生成
+            createOni();
+        }
+        
+        function startGame() {
+            initAudio();
+            gameActive = true;
+            score = 0;
+            wave = 1;
+            defeatedOnis = 0;
+            oniSpeed = 1;
+            activeOnis = [];
+            
+            document.getElementById('score').textContent = score;
+            document.getElementById('waveNumber').textContent = wave;
+            document.getElementById('startMessage').style.display = 'none';
+            document.getElementById('instruction').style.display = 'block';
+            
+            // キーボードイベント
+            document.addEventListener('keydown', handleKeyPress);
+            
+            // 最初の鬼
+            createOni();
+            
+            // ゲームループ
+            gameLoop = setInterval(moveOnis, 50);
+        }
+        
+        function endGame(victory) {
+            gameActive = false;
+            clearInterval(gameLoop);
+            
+            // 残った鬼を削除
+            activeOnis.forEach(oni => oni.element.remove());
+            activeOnis = [];
+            
+            document.removeEventListener('keydown', handleKeyPress);
+            document.getElementById('instruction').style.display = 'none';
+            
+            if (victory) {
+                playSound('defeat');
+                document.getElementById('resultTitle').textContent = 'クリアー！🎉';
+                document.getElementById('resultText').textContent = '5ひきの おにを たおしたよ！';
+            } else {
+                playSound('gameover');
+                document.getElementById('resultTitle').textContent = 'ゲームオーバー！💀';
+                document.getElementById('resultText').textContent = 'おにが いえに きちゃった！';
+            }
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOverMessage').style.display = 'block';
+        }
+        
+        function resetGame() {
+            document.getElementById('gameOverMessage').style.display = 'none';
+            document.getElementById('startMessage').style.display = 'block';
+            document.getElementById('typedKey').textContent = '?';
+        }
+    </script>
+</body>
+</html>
