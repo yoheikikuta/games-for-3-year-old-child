@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ドライブゲーム</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #87CEEB;
+        }
+        
+        .game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .road {
+            width: 400px;
+            height: 100vh;
+            background: #333;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .road-line {
+            width: 10px;
+            height: 80px;
+            background: white;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: roadMove 1s linear infinite;
+        }
+        
+        @keyframes roadMove {
+            from {
+                top: -80px;
+            }
+            to {
+                top: 100vh;
+            }
+        }
+        
+        .car {
+            width: 50px;
+            height: 80px;
+            position: absolute;
+            bottom: 100px;
+            left: 175px;
+            background: #FF6B6B;
+            border-radius: 10px 10px 20px 20px;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+            transition: left 0.2s ease;
+            z-index: 10;
+        }
+        
+        .car::before {
+            content: '';
+            position: absolute;
+            width: 35px;
+            height: 40px;
+            background: #87CEEB;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 5px;
+        }
+        
+        .car::after {
+            content: '🚗';
+            position: absolute;
+            font-size: 40px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .obstacle {
+            width: 50px;
+            height: 80px;
+            position: absolute;
+            background: #666;
+            border-radius: 10px;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.3);
+        }
+        
+        .obstacle::after {
+            content: '🚙';
+            position: absolute;
+            font-size: 40px;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        .timer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 2em;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        
+        .score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2em;
+            color: white;
+            background: rgba(0,0,0,0.5);
+            padding: 10px 20px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            z-index: 200;
+        }
+        
+        .message h2 {
+            margin: 0 0 20px 0;
+            font-size: 2.5em;
+            color: #333;
+        }
+        
+        .message p {
+            font-size: 1.5em;
+            color: #666;
+            margin: 10px 0;
+        }
+        
+        .start-btn, .retry-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.5em;
+            background: #4ECDC4;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .start-btn:hover, .retry-btn:hover {
+            background: #45B7AA;
+        }
+        
+        .grass {
+            position: absolute;
+            width: calc((100vw - 400px) / 2);
+            height: 100vh;
+            background: #90EE90;
+        }
+        
+        .grass.left {
+            left: 0;
+        }
+        
+        .grass.right {
+            right: 0;
+        }
+        
+        .tree {
+            position: absolute;
+            font-size: 60px;
+            animation: treeMove 3s linear infinite;
+        }
+        
+        @keyframes treeMove {
+            from {
+                top: -100px;
+            }
+            to {
+                top: 100vh;
+            }
+        }
+        
+        .explosion {
+            position: absolute;
+            font-size: 80px;
+            animation: explode 0.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        @keyframes explode {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2) rotate(180deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="grass left" id="leftGrass"></div>
+        <div class="grass right" id="rightGrass"></div>
+        
+        <div class="road" id="road">
+            <div class="car" id="car"></div>
+        </div>
+        
+        <div class="timer" id="timer" style="display: none;">
+            のこり: <span id="timeLeft">30</span>秒
+        </div>
+        
+        <div class="score" id="score" style="display: none;">
+            スコア: <span id="scoreValue">0</span>
+        </div>
+        
+        <div class="message" id="startMessage">
+            <h2>ドライブゲーム 🚗</h2>
+            <p>ひだり ← と みぎ → で くるまを うごかそう！</p>
+            <p>30びょうかん しょうがいぶつを よけよう！</p>
+            <button class="start-btn" onclick="startGame()">スタート！</button>
+        </div>
+        
+        <div class="message" id="gameOverMessage" style="display: none;">
+            <h2 id="resultTitle">ゲームオーバー！</h2>
+            <p id="resultText"></p>
+            <p>スコア: <span id="finalScore">0</span></p>
+            <button class="retry-btn" onclick="resetGame()">もういちど！</button>
+        </div>
+    </div>
+    
+    <script>
+        let car;
+        let road;
+        let carPosition = 175;
+        let gameRunning = false;
+        let timeLeft = 30;
+        let score = 0;
+        let obstacles = [];
+        let trees = [];
+        let gameInterval;
+        let obstacleInterval;
+        let treeInterval;
+        let timerInterval;
+        let obstacleSpeed = 5;
+        let obstacleSpawnRate = 2000;
+        let audioContext;
+        
+        const lanes = [75, 175, 275];
+        
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        function playSound(type) {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'move') {
+                oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'crash') {
+                oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            } else if (type === 'success') {
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, index) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.1);
+                    gain.gain.setValueAtTime(0.2, audioContext.currentTime + index * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.1 + 0.3);
+                    osc.start(audioContext.currentTime + index * 0.1);
+                    osc.stop(audioContext.currentTime + index * 0.1 + 0.3);
+                });
+            }
+        }
+        
+        function init() {
+            car = document.getElementById('car');
+            road = document.getElementById('road');
+            
+            document.addEventListener('keydown', handleKeyPress);
+            
+            // 道路の線を作成
+            for (let i = 0; i < 10; i++) {
+                const line = document.createElement('div');
+                line.className = 'road-line';
+                line.style.top = (i * 120) + 'px';
+                line.style.animationDelay = (i * 0.1) + 's';
+                road.appendChild(line);
+            }
+        }
+        
+        function handleKeyPress(e) {
+            if (!gameRunning) return;
+            
+            if (e.key === 'ArrowLeft' && carPosition > 75) {
+                carPosition -= 100;
+                car.style.left = carPosition + 'px';
+                playSound('move');
+            } else if (e.key === 'ArrowRight' && carPosition < 275) {
+                carPosition += 100;
+                car.style.left = carPosition + 'px';
+                playSound('move');
+            }
+        }
+        
+        function createObstacle() {
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            const lane = lanes[Math.floor(Math.random() * lanes.length)];
+            obstacle.style.left = lane + 'px';
+            obstacle.style.top = '-80px';
+            road.appendChild(obstacle);
+            obstacles.push({element: obstacle, position: -80, lane: lane});
+        }
+        
+        function createTree() {
+            const tree = document.createElement('div');
+            tree.className = 'tree';
+            tree.textContent = '🌳';
+            tree.style.top = '-100px';
+            
+            if (Math.random() < 0.5) {
+                tree.style.left = Math.random() * 200 + 'px';
+                document.getElementById('leftGrass').appendChild(tree);
+            } else {
+                tree.style.right = Math.random() * 200 + 'px';
+                document.getElementById('rightGrass').appendChild(tree);
+            }
+            
+            trees.push(tree);
+        }
+        
+        function moveObstacles() {
+            obstacles = obstacles.filter(obstacle => {
+                obstacle.position += obstacleSpeed;
+                obstacle.element.style.top = obstacle.position + 'px';
+                
+                // 衝突判定
+                if (obstacle.position > 520 && obstacle.position < 680 && obstacle.lane === carPosition) {
+                    gameOver(false);
+                    return false;
+                }
+                
+                // 画面外に出たら削除
+                if (obstacle.position > window.innerHeight) {
+                    obstacle.element.remove();
+                    score += 10;
+                    document.getElementById('scoreValue').textContent = score;
+                    return false;
+                }
+                
+                return true;
+            });
+        }
+        
+        function createExplosion(x, y) {
+            const explosion = document.createElement('div');
+            explosion.className = 'explosion';
+            explosion.textContent = '💥';
+            explosion.style.left = x + 'px';
+            explosion.style.top = y + 'px';
+            road.appendChild(explosion);
+            
+            setTimeout(() => {
+                explosion.remove();
+            }, 500);
+        }
+        
+        function updateTimer() {
+            timeLeft--;
+            document.getElementById('timeLeft').textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                gameOver(true);
+            }
+            
+            // 難易度を上げる
+            if (timeLeft === 20) {
+                obstacleSpeed = 7;
+                clearInterval(obstacleInterval);
+                obstacleInterval = setInterval(createObstacle, 1500);
+            } else if (timeLeft === 10) {
+                obstacleSpeed = 9;
+                clearInterval(obstacleInterval);
+                obstacleInterval = setInterval(createObstacle, 1000);
+            }
+        }
+        
+        function startGame() {
+            initAudio();
+            gameRunning = true;
+            score = 0;
+            timeLeft = 30;
+            obstacleSpeed = 5;
+            
+            document.getElementById('startMessage').style.display = 'none';
+            document.getElementById('timer').style.display = 'block';
+            document.getElementById('score').style.display = 'block';
+            document.getElementById('scoreValue').textContent = score;
+            document.getElementById('timeLeft').textContent = timeLeft;
+            
+            // ゲームループ開始
+            gameInterval = setInterval(moveObstacles, 50);
+            obstacleInterval = setInterval(createObstacle, obstacleSpawnRate);
+            treeInterval = setInterval(createTree, 1000);
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+        
+        function gameOver(success) {
+            gameRunning = false;
+            
+            // インターバルをクリア
+            clearInterval(gameInterval);
+            clearInterval(obstacleInterval);
+            clearInterval(treeInterval);
+            clearInterval(timerInterval);
+            
+            if (success) {
+                playSound('success');
+                document.getElementById('resultTitle').textContent = 'クリアー！🎉';
+                document.getElementById('resultText').textContent = '30びょうかん よく がんばったね！';
+            } else {
+                playSound('crash');
+                createExplosion(carPosition + 25, 600);
+                document.getElementById('resultTitle').textContent = 'ゲームオーバー！💥';
+                document.getElementById('resultText').textContent = 'くるまが ぶつかっちゃった！';
+            }
+            
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOverMessage').style.display = 'block';
+        }
+        
+        function resetGame() {
+            // 道路上のすべての障害物を削除
+            const allObstacles = road.querySelectorAll('.obstacle');
+            allObstacles.forEach(obstacle => obstacle.remove());
+            obstacles = [];
+            
+            // すべての木を削除
+            const allTrees = document.querySelectorAll('.tree');
+            allTrees.forEach(tree => tree.remove());
+            trees = [];
+            
+            // 爆発エフェクトも削除
+            const explosions = road.querySelectorAll('.explosion');
+            explosions.forEach(explosion => explosion.remove());
+            
+            // 車を初期位置に戻す
+            carPosition = 175;
+            car.style.left = carPosition + 'px';
+            
+            document.getElementById('gameOverMessage').style.display = 'none';
+            document.getElementById('timer').style.display = 'none';
+            document.getElementById('score').style.display = 'none';
+            document.getElementById('startMessage').style.display = 'block';
+        }
+        
+        // 初期化
+        init();
+    </script>
+</body>
+</html>
