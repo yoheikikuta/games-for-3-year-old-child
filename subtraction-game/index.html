@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ひきざんゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #FFB6C1 0%, #FFC0CB 100%);
+            position: relative;
+            height: 100vh;
+        }
+        .game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px 40px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+        .score {
+            font-size: 1.8em;
+            color: #666;
+            margin: 5px 0;
+        }
+        .problem-container {
+            background: white;
+            padding: 40px 60px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 40px;
+            text-align: center;
+        }
+        .problem {
+            font-size: 4em;
+            color: #333;
+            font-weight: bold;
+            letter-spacing: 10px;
+        }
+        .answer-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .answer-btn {
+            background: #B8E6B8;
+            border: none;
+            border-radius: 15px;
+            font-size: 2.5em;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            color: #333;
+            font-weight: bold;
+        }
+        .answer-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            background: #9DD89D;
+        }
+        .answer-btn:active {
+            transform: translateY(-2px);
+        }
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: white;
+            padding: 30px 50px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 20;
+        }
+        .start-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.8em;
+            background: #FF6B9D;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .start-btn:hover {
+            background: #E85A8A;
+        }
+        .correct-message {
+            position: absolute;
+            font-size: 4em;
+            color: #4CAF50;
+            font-weight: bold;
+            animation: fadeInOut 1s ease-out forwards;
+            pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        @keyframes fadeInOut {
+            0% {
+                opacity: 0;
+                transform: scale(0.5);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+            100% {
+                opacity: 0;
+                transform: scale(1);
+            }
+        }
+        .firework {
+            position: absolute;
+            pointer-events: none;
+        }
+        .spark {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            animation: explode ease-out forwards;
+        }
+        @keyframes explode {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--tx), var(--ty)) scale(0);
+                opacity: 0;
+            }
+        }
+        .star {
+            position: absolute;
+            font-size: 40px;
+            opacity: 0.8;
+            animation: twinkle 3s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes twinkle {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <div class="header">
+            <h1>ひきざんゲーム➖</h1>
+            <div class="score">せいかい: <span id="score">0</span></div>
+        </div>
+        
+        <div class="problem-container" id="problemContainer" style="display: none;">
+            <div class="problem" id="problem"></div>
+        </div>
+        
+        <div class="answer-grid" id="answerGrid" style="display: none;">
+            <button class="answer-btn" onclick="checkAnswer(0)">0</button>
+            <button class="answer-btn" onclick="checkAnswer(1)">1</button>
+            <button class="answer-btn" onclick="checkAnswer(2)">2</button>
+            <button class="answer-btn" onclick="checkAnswer(3)">3</button>
+            <button class="answer-btn" onclick="checkAnswer(4)">4</button>
+            <button class="answer-btn" onclick="checkAnswer(5)">5</button>
+            <button class="answer-btn" onclick="checkAnswer(6)">6</button>
+            <button class="answer-btn" onclick="checkAnswer(7)">7</button>
+            <button class="answer-btn" onclick="checkAnswer(8)">8</button>
+            <button class="answer-btn" onclick="checkAnswer(9)">9</button>
+            <button class="answer-btn" onclick="checkAnswer(10)">10</button>
+        </div>
+        
+        <div class="message" id="startMessage">
+            <h2>ひきざんに ちょうせん！</h2>
+            <p style="font-size: 1.3em; color: #666;">もんだいを みて<br>ただしい こたえを えらぼう！</p>
+            <button class="start-btn" onclick="startGame()">スタート！</button>
+        </div>
+    </div>
+
+    <script>
+        let score = 0;
+        let currentAnswer = 0;
+        let audioContext;
+        
+        // 音声コンテキストの初期化
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        // 正解音
+        function playCorrectSound() {
+            if (!audioContext) return;
+            
+            const notes = [523.25, 659.25, 783.99, 1046.50]; // ドミソド
+            
+            notes.forEach((freq, index) => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.1);
+                
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime + index * 0.1);
+                gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + index * 0.1 + 0.05);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.1 + 0.3);
+                
+                oscillator.start(audioContext.currentTime + index * 0.1);
+                oscillator.stop(audioContext.currentTime + index * 0.1 + 0.3);
+            });
+        }
+        
+        // 花火エフェクト
+        function createFirework(x, y) {
+            const firework = document.createElement('div');
+            firework.className = 'firework';
+            firework.style.left = x + 'px';
+            firework.style.top = y + 'px';
+            
+            const colors = [
+                ['#FF6B6B', '#FFB3B3'],
+                ['#4ECDC4', '#A8E6E1'],
+                ['#FFE66D', '#FFF4B3'],
+                ['#95E1D3', '#C7F0E8'],
+                ['#FF9FF3', '#FFD1F8']
+            ];
+            
+            const colorSet = colors[Math.floor(Math.random() * colors.length)];
+            const particleCount = 30;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const spark = document.createElement('div');
+                spark.className = 'spark';
+                
+                const angle = (Math.PI * 2 * i) / particleCount;
+                const velocity = 100 + Math.random() * 100;
+                const tx = Math.cos(angle) * velocity;
+                const ty = Math.sin(angle) * velocity;
+                
+                spark.style.background = `radial-gradient(circle, ${colorSet[0]}, ${colorSet[1]})`;
+                spark.style.boxShadow = `0 0 6px ${colorSet[0]}`;
+                spark.style.setProperty('--tx', tx + 'px');
+                spark.style.setProperty('--ty', ty + 'px');
+                spark.style.animationDuration = '0.8s';
+                
+                firework.appendChild(spark);
+            }
+            
+            document.getElementById('gameContainer').appendChild(firework);
+            
+            setTimeout(() => {
+                firework.remove();
+            }, 1000);
+        }
+        
+        // 正解メッセージ
+        function showCorrectMessage() {
+            const messages = ['すごい！', 'よくできた！', 'ただしい！', 'えらい！', 'やったね！'];
+            const message = messages[Math.floor(Math.random() * messages.length)];
+            
+            const msgEl = document.createElement('div');
+            msgEl.className = 'correct-message';
+            msgEl.textContent = message;
+            msgEl.style.left = '50%';
+            msgEl.style.top = '40%';
+            msgEl.style.transform = 'translate(-50%, -50%)';
+            
+            document.getElementById('gameContainer').appendChild(msgEl);
+            
+            setTimeout(() => {
+                msgEl.remove();
+            }, 1000);
+        }
+        
+        // 新しい問題を生成
+        function generateProblem() {
+            // 答えが0〜10になるような引き算を生成
+            currentAnswer = Math.floor(Math.random() * 11); // 0〜10
+            
+            // num1 - num2 = currentAnswer となるように生成
+            // num1 >= num2 を保証（結果が負にならないように）
+            let num1, num2;
+            
+            // num1は答え以上の値にする（最大10）
+            num1 = currentAnswer + Math.floor(Math.random() * (11 - currentAnswer));
+            num2 = num1 - currentAnswer;
+            
+            document.getElementById('problem').textContent = `${num1} - ${num2} = ?`;
+        }
+        
+        // 答えをチェック
+        function checkAnswer(answer) {
+            if (answer === currentAnswer) {
+                score++;
+                document.getElementById('score').textContent = score;
+                
+                // 効果を表示
+                playCorrectSound();
+                showCorrectMessage();
+                
+                // 複数の花火
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const x = window.innerWidth * 0.3 + Math.random() * window.innerWidth * 0.4;
+                        const y = window.innerHeight * 0.3 + Math.random() * window.innerHeight * 0.3;
+                        createFirework(x, y);
+                    }, i * 200);
+                }
+                
+                // 次の問題
+                setTimeout(() => {
+                    generateProblem();
+                }, 1500);
+            } else {
+                // 不正解の場合はボタンを揺らす
+                event.target.style.animation = 'shake 0.3s';
+                setTimeout(() => {
+                    event.target.style.animation = '';
+                }, 300);
+            }
+        }
+        
+        // 星を作成
+        function createStar() {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.textContent = '⭐';
+            star.style.left = Math.random() * window.innerWidth + 'px';
+            star.style.top = Math.random() * 300 + 'px';
+            star.style.animationDelay = Math.random() * 3 + 's';
+            document.getElementById('gameContainer').appendChild(star);
+        }
+        
+        // ゲーム開始
+        function startGame() {
+            score = 0;
+            document.getElementById('score').textContent = score;
+            document.getElementById('startMessage').style.display = 'none';
+            document.getElementById('problemContainer').style.display = 'block';
+            document.getElementById('answerGrid').style.display = 'grid';
+            
+            initAudio();
+            
+            // 星を作成
+            for (let i = 0; i < 5; i++) {
+                createStar();
+            }
+            
+            // 最初の問題
+            generateProblem();
+        }
+        
+        // 揺れるアニメーション用のCSS追加
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-10px); }
+                75% { transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
