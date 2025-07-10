@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>じゃんけんゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #FFB6C1 0%, #FFC0CB 100%);
+            position: relative;
+            height: 100vh;
+        }
+        .game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px 40px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+        .score {
+            font-size: 1.5em;
+            color: #666;
+            margin: 5px 0;
+        }
+        .game-area {
+            background: white;
+            padding: 40px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+        .result-display {
+            font-size: 3em;
+            margin: 20px 0;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+        }
+        .player-choice, .cpu-choice {
+            font-size: 80px;
+            animation: bounce 0.5s ease-out;
+        }
+        @keyframes bounce {
+            0% { transform: scale(0); }
+            60% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        .vs {
+            font-size: 40px;
+            color: #FF6B6B;
+            font-weight: bold;
+        }
+        .choices {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 30px 0;
+        }
+        .choice-btn {
+            background: #FFE66D;
+            border: none;
+            border-radius: 20px;
+            font-size: 60px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .choice-btn:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.2);
+            background: #FFD93D;
+        }
+        .choice-btn:active {
+            transform: translateY(-5px);
+        }
+        .message {
+            font-size: 2em;
+            color: #333;
+            margin: 20px 0;
+            font-weight: bold;
+            height: 40px;
+        }
+        .win-message {
+            color: #4CAF50;
+        }
+        .lose-message {
+            color: #F44336;
+        }
+        .draw-message {
+            color: #FF9800;
+        }
+        .start-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 20;
+        }
+        .start-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.8em;
+            background: #4ECDC4;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .start-btn:hover {
+            background: #45B7AA;
+        }
+        .countdown {
+            font-size: 2.5em;
+            color: #666;
+            margin: 10px 0;
+        }
+        .star {
+            position: absolute;
+            font-size: 30px;
+            opacity: 0;
+            animation: sparkle 1s ease-out forwards;
+            pointer-events: none;
+        }
+        @keyframes sparkle {
+            0% {
+                opacity: 0;
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-100px) rotate(360deg);
+            }
+        }
+        .floating-emoji {
+            position: absolute;
+            font-size: 40px;
+            animation: float 10s linear infinite;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        @keyframes float {
+            from {
+                transform: translateX(-100px) translateY(100vh);
+            }
+            to {
+                transform: translateX(calc(100vw + 100px)) translateY(-100px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <div class="header">
+            <h1>じゃんけんゲーム✊✌️✋</h1>
+            <div class="score">
+                <span>かち: <span id="winCount">0</span></span> | 
+                <span>まけ: <span id="loseCount">0</span></span> | 
+                <span>あいこ: <span id="drawCount">0</span></span>
+            </div>
+        </div>
+        
+        <div class="game-area" id="gameArea" style="display: none;">
+            <div class="countdown" id="countdown"></div>
+            <div class="result-display" id="resultDisplay">
+                <div class="player-choice" id="playerChoice"></div>
+                <div class="vs" id="vs" style="display: none;">VS</div>
+                <div class="cpu-choice" id="cpuChoice"></div>
+            </div>
+            <div class="message" id="message">えらんでね！</div>
+            <div class="choices" id="choices">
+                <button class="choice-btn" onclick="playGame('rock')">✊</button>
+                <button class="choice-btn" onclick="playGame('scissors')">✌️</button>
+                <button class="choice-btn" onclick="playGame('paper')">✋</button>
+            </div>
+        </div>
+        
+        <div class="start-message" id="startMessage">
+            <h2>じゃんけんで あそぼう！</h2>
+            <p style="font-size: 1.3em; color: #666;">
+                ✊ グー は ✌️ チョキ に かつ<br>
+                ✌️ チョキ は ✋ パー に かつ<br>
+                ✋ パー は ✊ グー に かつ
+            </p>
+            <button class="start-btn" onclick="startGame()">はじめる！</button>
+        </div>
+    </div>
+
+    <script>
+        let wins = 0;
+        let losses = 0;
+        let draws = 0;
+        let audioContext;
+        let isPlaying = false;
+        
+        const choices = {
+            rock: '✊',
+            scissors: '✌️',
+            paper: '✋'
+        };
+        
+        const winConditions = {
+            rock: 'scissors',
+            scissors: 'paper',
+            paper: 'rock'
+        };
+        
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        function playSound(type) {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'select') {
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'win') {
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, index) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.1);
+                    gain.gain.setValueAtTime(0, audioContext.currentTime + index * 0.1);
+                    gain.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + index * 0.1 + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.1 + 0.3);
+                    osc.start(audioContext.currentTime + index * 0.1);
+                    osc.stop(audioContext.currentTime + index * 0.1 + 0.3);
+                });
+            } else if (type === 'lose') {
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                oscillator.frequency.linearRampToValueAtTime(100, audioContext.currentTime + 0.3);
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } else if (type === 'draw') {
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            }
+        }
+        
+        function createStar(x, y) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.textContent = '⭐';
+            star.style.left = x + 'px';
+            star.style.top = y + 'px';
+            document.getElementById('gameContainer').appendChild(star);
+            
+            setTimeout(() => {
+                star.remove();
+            }, 1000);
+        }
+        
+        function createFloatingEmoji() {
+            const emojis = ['✊', '✌️', '✋'];
+            const emoji = document.createElement('div');
+            emoji.className = 'floating-emoji';
+            emoji.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+            emoji.style.left = '-100px';
+            emoji.style.top = Math.random() * window.innerHeight + 'px';
+            emoji.style.animationDelay = Math.random() * 10 + 's';
+            document.getElementById('gameContainer').appendChild(emoji);
+            
+            setTimeout(() => {
+                emoji.remove();
+            }, 11000);
+        }
+        
+        function startGame() {
+            initAudio();
+            document.getElementById('startMessage').style.display = 'none';
+            document.getElementById('gameArea').style.display = 'block';
+            
+            // 浮遊する絵文字を作成
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => createFloatingEmoji(), i * 2000);
+            }
+            setInterval(createFloatingEmoji, 10000);
+        }
+        
+        async function playGame(playerChoice) {
+            if (isPlaying) return;
+            isPlaying = true;
+            
+            playSound('select');
+            
+            // UIをリセット
+            document.getElementById('playerChoice').textContent = '';
+            document.getElementById('cpuChoice').textContent = '';
+            document.getElementById('vs').style.display = 'none';
+            document.getElementById('message').textContent = '';
+            document.getElementById('choices').style.pointerEvents = 'none';
+            
+            // カウントダウン
+            const countdown = document.getElementById('countdown');
+            const countTexts = ['じゃん', 'けん', 'ぽん！'];
+            
+            for (let i = 0; i < countTexts.length; i++) {
+                countdown.textContent = countTexts[i];
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            countdown.textContent = '';
+            
+            // 結果を表示
+            const cpuOptions = ['rock', 'scissors', 'paper'];
+            const cpuChoice = cpuOptions[Math.floor(Math.random() * cpuOptions.length)];
+            
+            document.getElementById('playerChoice').textContent = choices[playerChoice];
+            document.getElementById('vs').style.display = 'block';
+            document.getElementById('cpuChoice').textContent = choices[cpuChoice];
+            
+            // 勝敗判定
+            let result;
+            let message;
+            let messageClass;
+            
+            if (playerChoice === cpuChoice) {
+                result = 'draw';
+                message = 'あいこ！';
+                messageClass = 'draw-message';
+                draws++;
+                playSound('draw');
+            } else if (winConditions[playerChoice] === cpuChoice) {
+                result = 'win';
+                message = 'かった！';
+                messageClass = 'win-message';
+                wins++;
+                playSound('win');
+                
+                // 星を作成
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        const x = window.innerWidth * 0.3 + Math.random() * window.innerWidth * 0.4;
+                        const y = window.innerHeight * 0.4 + Math.random() * window.innerHeight * 0.2;
+                        createStar(x, y);
+                    }, i * 100);
+                }
+            } else {
+                result = 'lose';
+                message = 'まけた...';
+                messageClass = 'lose-message';
+                losses++;
+                playSound('lose');
+            }
+            
+            // 結果を表示
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = message;
+            messageEl.className = 'message ' + messageClass;
+            
+            // スコアを更新
+            document.getElementById('winCount').textContent = wins;
+            document.getElementById('loseCount').textContent = losses;
+            document.getElementById('drawCount').textContent = draws;
+            
+            // 次のゲームの準備
+            setTimeout(() => {
+                document.getElementById('choices').style.pointerEvents = 'auto';
+                document.getElementById('message').textContent = 'えらんでね！';
+                document.getElementById('message').className = 'message';
+                isPlaying = false;
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
