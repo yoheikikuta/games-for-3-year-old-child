@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>野菜煮込みゲーム</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98D8E8 100%);
+            position: relative;
+            height: 100vh;
+            user-select: none;
+        }
+        .game-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px 40px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+        .score {
+            font-size: 1.5em;
+            color: #666;
+            margin: 5px 0;
+        }
+        .game-area {
+            background: white;
+            padding: 30px;
+            border-radius: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            position: relative;
+            width: 90%;
+            max-width: 800px;
+            height: 600px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .vegetable-shelf {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .vegetable {
+            font-size: 50px;
+            cursor: grab;
+            transition: transform 0.2s;
+            position: relative;
+        }
+        .vegetable:hover {
+            transform: scale(1.1);
+        }
+        .vegetable.dragging {
+            cursor: grabbing;
+            position: fixed;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        .pot-container {
+            position: relative;
+            width: 300px;
+            height: 300px;
+        }
+        .pot {
+            width: 250px;
+            height: 200px;
+            background: #8B4513;
+            border-radius: 0 0 100px 100px;
+            position: relative;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        .pot-handle-left,
+        .pot-handle-right {
+            position: absolute;
+            width: 40px;
+            height: 20px;
+            background: #8B4513;
+            top: 10px;
+            border-radius: 10px;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.2);
+        }
+        .pot-handle-left {
+            left: -30px;
+        }
+        .pot-handle-right {
+            right: -30px;
+        }
+        .soup {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 150px;
+            background: #FFA500;
+            border-radius: 0 0 100px 100px;
+            overflow: hidden;
+            transition: height 0.3s;
+        }
+        .bubble {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 50%;
+            animation: bubble-up 2s linear infinite;
+        }
+        @keyframes bubble-up {
+            0% {
+                bottom: 0;
+                opacity: 0.8;
+            }
+            100% {
+                bottom: 150px;
+                opacity: 0;
+            }
+        }
+        .vegetable-in-pot {
+            position: absolute;
+            font-size: 40px;
+            animation: float 3s ease-in-out infinite;
+            z-index: 5;
+        }
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            50% {
+                transform: translateY(-10px) rotate(180deg);
+            }
+        }
+        .steam {
+            position: absolute;
+            width: 30px;
+            height: 60px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            filter: blur(10px);
+            animation: steam-rise 3s linear infinite;
+        }
+        @keyframes steam-rise {
+            0% {
+                bottom: 180px;
+                opacity: 0;
+                transform: translateX(0) scale(0.5);
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                bottom: 350px;
+                opacity: 0;
+                transform: translateX(20px) scale(1.5);
+            }
+        }
+        .stir-instruction {
+            position: absolute;
+            top: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.2em;
+            color: #666;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 10px rgba(0,0,0,0.1);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .stir-instruction.show {
+            opacity: 1;
+        }
+        .cooking-timer {
+            position: absolute;
+            top: -130px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 2em;
+            color: #333;
+            background: #FFE66D;
+            padding: 10px 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        .start-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 20;
+        }
+        .start-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.8em;
+            background: #4ECDC4;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .start-btn:hover {
+            background: #45B7AA;
+        }
+        .complete-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 3em;
+            color: #4CAF50;
+            font-weight: bold;
+            opacity: 0;
+            transition: opacity 0.5s;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .complete-message.show {
+            opacity: 1;
+        }
+        .stirring-cursor {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 3px solid #FF6B6B;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 100;
+        }
+        .stirring-cursor.show {
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container" id="gameContainer">
+        <div class="header">
+            <h1>野菜煮込みゲーム 🥕🥦🍅</h1>
+            <div class="score">
+                完成した料理: <span id="dishCount">0</span>
+            </div>
+        </div>
+        
+        <div class="game-area" id="gameArea" style="display: none;">
+            <div class="cooking-timer" id="cookingTimer">0秒</div>
+            <div class="stir-instruction" id="stirInstruction">マウスでグルグルかき混ぜてね！</div>
+            <div class="pot-container" id="potContainer">
+                <div class="pot">
+                    <div class="pot-handle-left"></div>
+                    <div class="pot-handle-right"></div>
+                    <div class="soup" id="soup"></div>
+                </div>
+            </div>
+            <div class="complete-message" id="completeMessage">おいしそう！</div>
+        </div>
+        
+        <div class="vegetable-shelf" id="vegetableShelf" style="display: none;">
+            <div class="vegetable" data-type="carrot">🥕</div>
+            <div class="vegetable" data-type="broccoli">🥦</div>
+            <div class="vegetable" data-type="tomato">🍅</div>
+            <div class="vegetable" data-type="corn">🌽</div>
+            <div class="vegetable" data-type="potato">🥔</div>
+            <div class="vegetable" data-type="onion">🧅</div>
+            <div class="vegetable" data-type="mushroom">🍄</div>
+            <div class="vegetable" data-type="pepper">🌶️</div>
+        </div>
+        
+        <div class="start-message" id="startMessage">
+            <h2>野菜を煮込んで料理を作ろう！</h2>
+            <p style="font-size: 1.3em; color: #666;">
+                好きな野菜を選んで鍋に入れて<br>
+                マウスでグルグルかき混ぜよう！<br>
+                おいしい料理ができるかな？
+            </p>
+            <button class="start-btn" onclick="startGame()">はじめる！</button>
+        </div>
+        
+        <div class="stirring-cursor" id="stirringCursor"></div>
+    </div>
+
+    <script>
+        let dishCount = 0;
+        let cookingTime = 0;
+        let cookingInterval;
+        let isStirring = false;
+        let stirAngle = 0;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let potCenterX = 0;
+        let potCenterY = 0;
+        let vegetablesInPot = [];
+        let audioContext;
+        let isCooking = false;
+        
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        function playSound(type) {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'drop') {
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(200, audioContext.currentTime + 0.1);
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'bubble') {
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800 + Math.random() * 400, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.05);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.05);
+            } else if (type === 'complete') {
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, index) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.1);
+                    gain.gain.setValueAtTime(0, audioContext.currentTime + index * 0.1);
+                    gain.gain.linearRampToValueAtTime(0.2, audioContext.currentTime + index * 0.1 + 0.05);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.1 + 0.3);
+                    osc.start(audioContext.currentTime + index * 0.1);
+                    osc.stop(audioContext.currentTime + index * 0.1 + 0.3);
+                });
+            }
+        }
+        
+        function createBubble() {
+            const soup = document.getElementById('soup');
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            const size = 5 + Math.random() * 15;
+            bubble.style.width = size + 'px';
+            bubble.style.height = size + 'px';
+            bubble.style.left = Math.random() * 230 + 'px';
+            bubble.style.animationDuration = (1.5 + Math.random() * 1) + 's';
+            soup.appendChild(bubble);
+            
+            if (Math.random() > 0.7) {
+                playSound('bubble');
+            }
+            
+            setTimeout(() => {
+                bubble.remove();
+            }, 2000);
+        }
+        
+        function createSteam() {
+            const potContainer = document.getElementById('potContainer');
+            const steam = document.createElement('div');
+            steam.className = 'steam';
+            steam.style.left = (100 + Math.random() * 100) + 'px';
+            steam.style.animationDelay = Math.random() * 2 + 's';
+            potContainer.appendChild(steam);
+            
+            setTimeout(() => {
+                steam.remove();
+            }, 3000);
+        }
+        
+        function startGame() {
+            initAudio();
+            document.getElementById('startMessage').style.display = 'none';
+            document.getElementById('gameArea').style.display = 'flex';
+            document.getElementById('vegetableShelf').style.display = 'flex';
+            
+            const potContainer = document.getElementById('potContainer');
+            const rect = potContainer.getBoundingClientRect();
+            potCenterX = rect.left + rect.width / 2;
+            potCenterY = rect.top + rect.height / 2;
+            
+            setupDragAndDrop();
+            startCooking();
+        }
+        
+        function setupDragAndDrop() {
+            const vegetables = document.querySelectorAll('.vegetable');
+            
+            vegetables.forEach(veg => {
+                veg.addEventListener('mousedown', startDrag);
+            });
+            
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', endDrag);
+        }
+        
+        let draggedElement = null;
+        let draggedClone = null;
+        
+        function startDrag(e) {
+            const original = e.target;
+            draggedClone = original.cloneNode(true);
+            draggedClone.classList.add('dragging');
+            document.body.appendChild(draggedClone);
+            
+            draggedClone.style.left = e.clientX - 25 + 'px';
+            draggedClone.style.top = e.clientY - 25 + 'px';
+            
+            draggedElement = {
+                clone: draggedClone,
+                type: original.dataset.type,
+                emoji: original.textContent
+            };
+        }
+        
+        function drag(e) {
+            if (draggedElement) {
+                draggedElement.clone.style.left = e.clientX - 25 + 'px';
+                draggedElement.clone.style.top = e.clientY - 25 + 'px';
+            }
+            
+            if (isStirring) {
+                const cursor = document.getElementById('stirringCursor');
+                cursor.style.left = e.clientX - 20 + 'px';
+                cursor.style.top = e.clientY - 20 + 'px';
+                
+                const dx = e.clientX - potCenterX;
+                const dy = e.clientY - potCenterY;
+                const newAngle = Math.atan2(dy, dx);
+                
+                const angleDiff = newAngle - stirAngle;
+                if (Math.abs(angleDiff) > 0.1 && Math.abs(angleDiff) < Math.PI) {
+                    stirPot();
+                }
+                
+                stirAngle = newAngle;
+            }
+        }
+        
+        function endDrag(e) {
+            if (draggedElement) {
+                const potContainer = document.getElementById('potContainer');
+                const rect = potContainer.getBoundingClientRect();
+                
+                if (e.clientX >= rect.left && e.clientX <= rect.right &&
+                    e.clientY >= rect.top && e.clientY <= rect.bottom) {
+                    dropInPot(draggedElement);
+                }
+                
+                draggedElement.clone.remove();
+                draggedElement = null;
+            }
+        }
+        
+        function dropInPot(vegetable) {
+            playSound('drop');
+            
+            const soup = document.getElementById('soup');
+            const vegInPot = document.createElement('div');
+            vegInPot.className = 'vegetable-in-pot';
+            vegInPot.textContent = vegetable.emoji;
+            vegInPot.style.left = (50 + Math.random() * 150) + 'px';
+            vegInPot.style.bottom = (20 + Math.random() * 80) + 'px';
+            vegInPot.style.animationDelay = Math.random() * 2 + 's';
+            soup.appendChild(vegInPot);
+            
+            vegetablesInPot.push(vegetable.type);
+            
+            if (vegetablesInPot.length >= 3 && !isCooking) {
+                startActualCooking();
+            }
+        }
+        
+        function startCooking() {
+            setInterval(createBubble, 500);
+            setInterval(createSteam, 1000);
+        }
+        
+        function startActualCooking() {
+            isCooking = true;
+            cookingTime = 0;
+            document.getElementById('stirInstruction').classList.add('show');
+            document.getElementById('stirringCursor').classList.add('show');
+            
+            const potContainer = document.getElementById('potContainer');
+            potContainer.addEventListener('mouseenter', () => { isStirring = true; });
+            potContainer.addEventListener('mouseleave', () => { isStirring = false; });
+            
+            cookingInterval = setInterval(() => {
+                cookingTime++;
+                document.getElementById('cookingTimer').textContent = cookingTime + '秒';
+                
+                if (cookingTime >= 10) {
+                    completeCooking();
+                }
+            }, 1000);
+        }
+        
+        function stirPot() {
+            const soup = document.getElementById('soup');
+            const veggiesInPot = soup.querySelectorAll('.vegetable-in-pot');
+            
+            veggiesInPot.forEach(veg => {
+                const currentLeft = parseFloat(veg.style.left);
+                const newLeft = currentLeft + (Math.random() - 0.5) * 10;
+                veg.style.left = Math.max(0, Math.min(200, newLeft)) + 'px';
+            });
+        }
+        
+        function completeCooking() {
+            clearInterval(cookingInterval);
+            isCooking = false;
+            isStirring = false;
+            
+            playSound('complete');
+            
+            document.getElementById('stirInstruction').classList.remove('show');
+            document.getElementById('stirringCursor').classList.remove('show');
+            document.getElementById('completeMessage').classList.add('show');
+            
+            dishCount++;
+            document.getElementById('dishCount').textContent = dishCount;
+            
+            setTimeout(() => {
+                resetPot();
+            }, 2000);
+        }
+        
+        function resetPot() {
+            const soup = document.getElementById('soup');
+            soup.innerHTML = '';
+            vegetablesInPot = [];
+            cookingTime = 0;
+            document.getElementById('cookingTimer').textContent = '0秒';
+            document.getElementById('completeMessage').classList.remove('show');
+        }
+    </script>
+</body>
+</html>
