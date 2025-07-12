@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>かくれんぼゲーム</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #87CEEB;
+        }
+        
+        .game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .game-area {
+            width: 800px;
+            height: 600px;
+            background: #90EE90;
+            position: relative;
+            border: 5px solid #228B22;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        
+        .hiding-spot {
+            position: absolute;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .hiding-spot:hover {
+            transform: scale(1.05);
+        }
+        
+        .tree {
+            width: 100px;
+            height: 120px;
+            background: #228B22;
+            border-radius: 50% 50% 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+        }
+        
+        .tree::after {
+            content: '🌳';
+        }
+        
+        .rock {
+            width: 120px;
+            height: 80px;
+            background: #696969;
+            border-radius: 40%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+        }
+        
+        .rock::after {
+            content: '🪨';
+        }
+        
+        .bush {
+            width: 100px;
+            height: 80px;
+            background: #32CD32;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+        }
+        
+        .bush::after {
+            content: '🌿';
+        }
+        
+        .house {
+            width: 150px;
+            height: 120px;
+            background: #8B4513;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 80px;
+        }
+        
+        .house::after {
+            content: '🏠';
+        }
+        
+        .character {
+            width: 50px;
+            height: 50px;
+            position: absolute;
+            font-size: 40px;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        
+        .character.hider::after {
+            content: '👦';
+        }
+        
+        .character.seeker::after {
+            content: '👧';
+        }
+        
+        .character.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .timer {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 2em;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        
+        .phase-indicator {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 1.5em;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            z-index: 200;
+        }
+        
+        .message h2 {
+            margin: 0 0 20px 0;
+            font-size: 2.5em;
+            color: #333;
+        }
+        
+        .message p {
+            font-size: 1.5em;
+            color: #666;
+            margin: 10px 0;
+        }
+        
+        .start-btn, .hide-btn, .retry-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.5em;
+            background: #4ECDC4;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .start-btn:hover, .hide-btn:hover, .retry-btn:hover {
+            background: #45B7AA;
+        }
+        
+        .found-effect {
+            position: absolute;
+            font-size: 100px;
+            animation: found 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        @keyframes found {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .click-indicator {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #FF6B6B;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: ripple 0.6s ease-out forwards;
+            z-index: 100;
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(3);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-area" id="gameArea">
+            <div class="hiding-spot tree" style="top: 50px; left: 100px;" data-spot="tree1"></div>
+            <div class="hiding-spot rock" style="top: 200px; left: 300px;" data-spot="rock1"></div>
+            <div class="hiding-spot bush" style="top: 100px; right: 150px;" data-spot="bush1"></div>
+            <div class="hiding-spot house" style="bottom: 50px; left: 200px;" data-spot="house1"></div>
+            <div class="hiding-spot tree" style="bottom: 100px; right: 100px;" data-spot="tree2"></div>
+            <div class="hiding-spot bush" style="top: 300px; left: 50px;" data-spot="bush2"></div>
+            <div class="hiding-spot rock" style="top: 50px; right: 250px;" data-spot="rock2"></div>
+            <div class="hiding-spot tree" style="top: 350px; right: 50px;" data-spot="tree3"></div>
+            <div class="hiding-spot bush" style="bottom: 150px; left: 450px;" data-spot="bush3"></div>
+            <div class="hiding-spot house" style="top: 150px; left: 500px;" data-spot="house2"></div>
+            <div class="hiding-spot rock" style="bottom: 250px; right: 300px;" data-spot="rock3"></div>
+            <div class="hiding-spot tree" style="bottom: 50px; left: 600px;" data-spot="tree4"></div>
+            
+            <div class="character hider" id="hider" style="top: 275px; left: 375px;"></div>
+        </div>
+        
+        <div class="phase-indicator" id="phaseIndicator" style="display: none;">
+            <span id="phaseText">かくれるターン</span>
+        </div>
+        
+        <div class="timer" id="timer" style="display: none;">
+            のこり: <span id="timeLeft">30</span>秒
+        </div>
+        
+        <div class="message" id="startMessage">
+            <h2>かくれんぼゲーム 🎮</h2>
+            <p>ふたりで あそぶ ゲームだよ！</p>
+            <p>さいしょは かくれるひとが やじるしキーで キャラクターを うごかして</p>
+            <p>かくれるばしょを きめよう</p>
+            <button class="start-btn" onclick="startGame()">スタート！</button>
+        </div>
+        
+        
+        <div class="message" id="seekMessage" style="display: none;">
+            <h2>みつけるターン！ 🔍</h2>
+            <p>30びょうい ないに みつけよう！</p>
+            <p>かくれてるばしょを クリックしてね</p>
+            <button class="hide-btn" onclick="startSeekingPhase()">はじめる！</button>
+        </div>
+        
+        <div class="message" id="gameOverMessage" style="display: none;">
+            <h2 id="resultTitle">ゲームしゅうりょう！</h2>
+            <p id="resultText"></p>
+            <button class="retry-btn" onclick="resetGame()">もういちど！</button>
+        </div>
+    </div>
+    
+    <script>
+        let gamePhase = 'waiting'; // waiting, hiding, seeking, over
+        let hider;
+        let hidingSpot = null;
+        let timeLeft = 30;
+        let timerInterval;
+        let audioContext;
+        
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        function playSound(type) {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'hide') {
+                oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } else if (type === 'found') {
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, index) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.1);
+                    gain.gain.setValueAtTime(0.2, audioContext.currentTime + index * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.1 + 0.3);
+                    osc.start(audioContext.currentTime + index * 0.1);
+                    osc.stop(audioContext.currentTime + index * 0.1 + 0.3);
+                });
+            } else if (type === 'miss') {
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'timeup') {
+                oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.5);
+            }
+        }
+        
+        function init() {
+            hider = document.getElementById('hider');
+            
+            // キーボード操作の設定
+            document.addEventListener('keydown', handleKeyPress);
+            
+            // かくれる場所のクリックイベント
+            const spots = document.querySelectorAll('.hiding-spot');
+            spots.forEach(spot => {
+                spot.addEventListener('click', checkHidingSpot);
+            });
+        }
+        
+        function handleKeyPress(e) {
+            if (gamePhase !== 'hiding') return;
+            
+            const gameArea = document.getElementById('gameArea').getBoundingClientRect();
+            const currentLeft = parseInt(hider.style.left) || 375;
+            const currentTop = parseInt(hider.style.top) || 275;
+            const moveSpeed = 25; // 移動速度を10から25に増加
+            
+            let newLeft = currentLeft;
+            let newTop = currentTop;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    newTop = Math.max(0, currentTop - moveSpeed);
+                    break;
+                case 'ArrowDown':
+                    newTop = Math.min(gameArea.height - 50, currentTop + moveSpeed);
+                    break;
+                case 'ArrowLeft':
+                    newLeft = Math.max(0, currentLeft - moveSpeed);
+                    break;
+                case 'ArrowRight':
+                    newLeft = Math.min(gameArea.width - 50, currentLeft + moveSpeed);
+                    break;
+            }
+            
+            hider.style.left = newLeft + 'px';
+            hider.style.top = newTop + 'px';
+        }
+        
+        
+        function checkNearHidingSpot() {
+            const hiderRect = hider.getBoundingClientRect();
+            const spots = document.querySelectorAll('.hiding-spot');
+            
+            for (let spot of spots) {
+                const spotRect = spot.getBoundingClientRect();
+                const distance = Math.sqrt(
+                    Math.pow(hiderRect.left + 25 - (spotRect.left + spotRect.width/2), 2) +
+                    Math.pow(hiderRect.top + 25 - (spotRect.top + spotRect.height/2), 2)
+                );
+                
+                if (distance < 80) {
+                    return spot.getAttribute('data-spot');
+                }
+            }
+            return null;
+        }
+        
+        function startGame() {
+            initAudio();
+            gamePhase = 'hiding';
+            document.getElementById('startMessage').style.display = 'none';
+            document.getElementById('phaseIndicator').style.display = 'block';
+            document.getElementById('phaseText').textContent = 'かくれるターン - やじるしキーでうごかそう！';
+            
+            // 隠れるボタンを画面下部に表示
+            const hideButton = document.createElement('button');
+            hideButton.className = 'hide-btn';
+            hideButton.textContent = 'かくれた！';
+            hideButton.style.position = 'absolute';
+            hideButton.style.bottom = '30px';
+            hideButton.style.left = '50%';
+            hideButton.style.transform = 'translateX(-50%)';
+            hideButton.style.zIndex = '150';
+            hideButton.onclick = startSeeking;
+            document.querySelector('.game-container').appendChild(hideButton);
+            
+            // 3秒後に操作説明を消す
+            setTimeout(() => {
+                document.getElementById('phaseText').textContent = 'かくれるターン';
+            }, 3000);
+        }
+        
+        function startSeeking() {
+            hidingSpot = checkNearHidingSpot();
+            const hideButton = document.querySelector('.game-container > .hide-btn');
+            
+            if (!hidingSpot) {
+                // かくれ場所の近くに移動させるボタンを表示
+                hideButton.textContent = 'もっとちかくに いどうしてね！';
+                hideButton.style.background = '#FF6B6B';
+                setTimeout(() => {
+                    hideButton.textContent = 'かくれた！';
+                    hideButton.style.background = '#4ECDC4';
+                }, 2000);
+                return;
+            }
+            
+            playSound('hide');
+            hider.classList.add('hidden');
+            
+            // 既存のボタンを削除
+            hideButton.remove();
+            
+            // かくれたボタンを表示
+            const confirmButton = document.createElement('button');
+            confirmButton.className = 'hide-btn';
+            confirmButton.textContent = 'つぎは みつけるひとの ばん！';
+            confirmButton.style.position = 'absolute';
+            confirmButton.style.top = '50%';
+            confirmButton.style.left = '50%';
+            confirmButton.style.transform = 'translate(-50%, -50%)';
+            confirmButton.style.zIndex = '300';
+            confirmButton.onclick = () => {
+                confirmButton.remove();
+                document.getElementById('seekMessage').style.display = 'block';
+            };
+            document.querySelector('.game-container').appendChild(confirmButton);
+        }
+        
+        function startSeekingPhase() {
+            gamePhase = 'seeking';
+            timeLeft = 30;
+            document.getElementById('seekMessage').style.display = 'none';
+            document.getElementById('phaseText').textContent = 'みつけるターン';
+            document.getElementById('timer').style.display = 'block';
+            document.getElementById('timeLeft').textContent = timeLeft;
+            
+            timerInterval = setInterval(updateTimer, 1000);
+        }
+        
+        function updateTimer() {
+            timeLeft--;
+            document.getElementById('timeLeft').textContent = timeLeft;
+            
+            if (timeLeft <= 0) {
+                gameOver(false);
+            }
+        }
+        
+        function checkHidingSpot(e) {
+            if (gamePhase !== 'seeking') return;
+            
+            const clickedSpot = e.currentTarget.getAttribute('data-spot');
+            const rect = e.currentTarget.getBoundingClientRect();
+            
+            // クリックエフェクト
+            createClickIndicator(e.clientX, e.clientY);
+            
+            if (clickedSpot === hidingSpot) {
+                // 見つけた！
+                playSound('found');
+                hider.classList.remove('hidden');
+                createFoundEffect(rect.left + rect.width/2, rect.top + rect.height/2);
+                gameOver(true);
+            } else {
+                // はずれ
+                playSound('miss');
+            }
+        }
+        
+        function createClickIndicator(x, y) {
+            const indicator = document.createElement('div');
+            indicator.className = 'click-indicator';
+            indicator.style.left = (x - 15) + 'px';
+            indicator.style.top = (y - 15) + 'px';
+            document.body.appendChild(indicator);
+            
+            setTimeout(() => {
+                indicator.remove();
+            }, 600);
+        }
+        
+        function createFoundEffect(x, y) {
+            const effect = document.createElement('div');
+            effect.className = 'found-effect';
+            effect.textContent = '✨';
+            effect.style.left = (x - 50) + 'px';
+            effect.style.top = (y - 50) + 'px';
+            document.body.appendChild(effect);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 1000);
+        }
+        
+        function gameOver(found) {
+            gamePhase = 'over';
+            clearInterval(timerInterval);
+            
+            if (found) {
+                document.getElementById('resultTitle').textContent = 'みつけた！🎉';
+                document.getElementById('resultText').textContent = 'みつけるひとの かち！';
+            } else {
+                playSound('timeup');
+                document.getElementById('resultTitle').textContent = 'じかんぎれ！⏰';
+                document.getElementById('resultText').textContent = 'かくれるひとの かち！';
+            }
+            
+            document.getElementById('gameOverMessage').style.display = 'block';
+        }
+        
+        function resetGame() {
+            gamePhase = 'waiting';
+            hidingSpot = null;
+            timeLeft = 30;
+            
+            // キャラクターを初期位置に戻す
+            hider.style.left = '375px';
+            hider.style.top = '275px';
+            hider.classList.remove('hidden');
+            
+            // UI要素をリセット
+            document.getElementById('gameOverMessage').style.display = 'none';
+            document.getElementById('timer').style.display = 'none';
+            document.getElementById('phaseIndicator').style.display = 'none';
+            document.getElementById('startMessage').style.display = 'block';
+        }
+        
+        // 初期化
+        init();
+    </script>
+</body>
+</html>
