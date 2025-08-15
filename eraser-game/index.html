@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>けしゴムゲーム</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: linear-gradient(to bottom, #FFE5CC, #FFD4B3);
+            height: 100vh;
+            position: relative;
+            cursor: none;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border: 5px solid #8B4513;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .header {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px 30px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #FF6B6B;
+            margin: 0;
+            font-size: 2.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .progress {
+            font-size: 1.3em;
+            color: #4ECDC4;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        
+        .eraser {
+            position: absolute;
+            width: 60px;
+            height: 80px;
+            pointer-events: none;
+            z-index: 100;
+            transform: translate(-30px, -40px);
+        }
+        
+        .eraser-body {
+            width: 100%;
+            height: 70%;
+            background: linear-gradient(to bottom, #FFB6C1, #FF69B4);
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        
+        .eraser-bottom {
+            width: 90%;
+            height: 30%;
+            background: #F0F0F0;
+            border-radius: 5px;
+            position: absolute;
+            bottom: -20%;
+            left: 5%;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.2);
+        }
+        
+        .button-container {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 20px;
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 1.3em;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            transition: transform 0.2s, box-shadow 0.2s;
+            font-weight: bold;
+        }
+        
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.35);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .celebration {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            display: none;
+            z-index: 200;
+            animation: celebrate 0.5s ease-out;
+        }
+        
+        .celebration.show {
+            display: block;
+        }
+        
+        .celebration h2 {
+            font-size: 4em;
+            color: #FFD700;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.3);
+            margin: 0;
+        }
+        
+        .celebration .emoji {
+            font-size: 5em;
+            animation: bounce 0.5s ease-out infinite alternate;
+        }
+        
+        @keyframes celebrate {
+            0% {
+                transform: translate(-50%, -50%) scale(0);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+        
+        @keyframes bounce {
+            0% {
+                transform: translateY(0);
+            }
+            100% {
+                transform: translateY(-20px);
+            }
+        }
+        
+        .sparkle {
+            position: absolute;
+            font-size: 30px;
+            animation: sparkle 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 150;
+        }
+        
+        @keyframes sparkle {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .instruction {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            background: white;
+            padding: 30px 50px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 300;
+        }
+        
+        .instruction h2 {
+            color: #FF6B6B;
+            font-size: 2em;
+            margin: 0 0 20px 0;
+        }
+        
+        .instruction p {
+            font-size: 1.3em;
+            color: #666;
+            margin: 10px 0;
+        }
+        
+        .instruction button {
+            margin-top: 20px;
+            background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🖍️ けしゴムゲーム 🖍️</h1>
+        <div class="progress">
+            <span id="progress">0</span>% けした！
+        </div>
+    </div>
+    
+    <canvas id="canvas"></canvas>
+    
+    <div class="eraser" id="eraser">
+        <div class="eraser-body">
+            <div class="eraser-bottom"></div>
+        </div>
+    </div>
+    
+    <div class="button-container">
+        <button onclick="newDrawing()">あたらしいらくがき 🎨</button>
+        <button onclick="clearAll()">ぜんぶけす ✨</button>
+    </div>
+    
+    <div class="celebration" id="celebration">
+        <h2>すごい！</h2>
+        <div class="emoji">🎉🌟🎊</div>
+    </div>
+    
+    <div class="instruction" id="instruction">
+        <h2>けしゴムゲーム</h2>
+        <p>🖍️ らくがきをけしゴムでけそう！</p>
+        <p>✋ マウスかゆびでなぞってね</p>
+        <button onclick="startGame()">はじめる！</button>
+    </div>
+    
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const eraser = document.getElementById('eraser');
+        const progressSpan = document.getElementById('progress');
+        const celebration = document.getElementById('celebration');
+        const instruction = document.getElementById('instruction');
+        
+        let isErasing = false;
+        let drawingData = [];
+        let totalPixels = 0;
+        let erasedPixels = 0;
+        const eraserSize = 40;
+        
+        canvas.width = 800;
+        canvas.height = 600;
+        
+        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
+        const shapes = ['circle', 'square', 'line', 'scribble', 'star', 'heart'];
+        
+        function startGame() {
+            instruction.style.display = 'none';
+            document.body.style.cursor = 'none';
+            createNewDrawing();
+        }
+        
+        function drawCircle(x, y, radius, color) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+        
+        function drawSquare(x, y, size, color) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 8;
+            ctx.strokeRect(x - size/2, y - size/2, size, size);
+        }
+        
+        function drawLine(x1, y1, x2, y2, color) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 10;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.stroke();
+        }
+        
+        function drawScribble(x, y, color) {
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 6;
+            ctx.lineCap = 'round';
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            
+            for (let i = 0; i < 20; i++) {
+                const nx = x + (Math.random() - 0.5) * 150;
+                const ny = y + (Math.random() - 0.5) * 150;
+                ctx.lineTo(nx, ny);
+            }
+            ctx.stroke();
+        }
+        
+        function drawStar(x, y, size, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            for (let i = 0; i < 5; i++) {
+                const angle = (i * 72 - 90) * Math.PI / 180;
+                const nx = x + Math.cos(angle) * size;
+                const ny = y + Math.sin(angle) * size;
+                if (i === 0) ctx.moveTo(nx, ny);
+                else ctx.lineTo(nx, ny);
+                
+                const innerAngle = ((i * 72 + 36) - 90) * Math.PI / 180;
+                const ix = x + Math.cos(innerAngle) * size * 0.5;
+                const iy = y + Math.sin(innerAngle) * size * 0.5;
+                ctx.lineTo(ix, iy);
+            }
+            ctx.closePath();
+            ctx.fill();
+        }
+        
+        function drawHeart(x, y, size, color) {
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.moveTo(x, y + size * 0.3);
+            ctx.bezierCurveTo(x, y, x - size * 0.5, y - size * 0.3, x - size * 0.5, y);
+            ctx.bezierCurveTo(x - size * 0.5, y + size * 0.3, x, y + size * 0.5, x, y + size);
+            ctx.bezierCurveTo(x, y + size * 0.5, x + size * 0.5, y + size * 0.3, x + size * 0.5, y);
+            ctx.bezierCurveTo(x + size * 0.5, y - size * 0.3, x, y, x, y + size * 0.3);
+            ctx.fill();
+        }
+        
+        function createNewDrawing() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            drawingData = [];
+            
+            const numShapes = 8 + Math.floor(Math.random() * 7);
+            
+            for (let i = 0; i < numShapes; i++) {
+                const shape = shapes[Math.floor(Math.random() * shapes.length)];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                const x = 100 + Math.random() * 600;
+                const y = 100 + Math.random() * 400;
+                
+                switch(shape) {
+                    case 'circle':
+                        drawCircle(x, y, 30 + Math.random() * 40, color);
+                        break;
+                    case 'square':
+                        drawSquare(x, y, 60 + Math.random() * 40, color);
+                        break;
+                    case 'line':
+                        const x2 = x + (Math.random() - 0.5) * 200;
+                        const y2 = y + (Math.random() - 0.5) * 200;
+                        drawLine(x, y, x2, y2, color);
+                        break;
+                    case 'scribble':
+                        drawScribble(x, y, color);
+                        break;
+                    case 'star':
+                        drawStar(x, y, 30 + Math.random() * 20, color);
+                        break;
+                    case 'heart':
+                        drawHeart(x, y, 30 + Math.random() * 20, color);
+                        break;
+                }
+            }
+            
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            totalPixels = 0;
+            for (let i = 3; i < imageData.data.length; i += 4) {
+                if (imageData.data[i] > 0) {
+                    totalPixels++;
+                }
+            }
+            erasedPixels = 0;
+            updateProgress();
+        }
+        
+        function updateProgress() {
+            const progress = totalPixels > 0 ? Math.round((erasedPixels / totalPixels) * 100) : 0;
+            progressSpan.textContent = progress;
+            
+            if (progress >= 95 && totalPixels > 0) {
+                showCelebration();
+            }
+        }
+        
+        function showCelebration() {
+            celebration.classList.add('show');
+            setTimeout(() => {
+                celebration.classList.remove('show');
+                createNewDrawing();
+            }, 2000);
+        }
+        
+        function erase(x, y) {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = x - rect.left;
+            const canvasY = y - rect.top;
+            
+            const imageData = ctx.getImageData(
+                Math.max(0, canvasX - eraserSize),
+                Math.max(0, canvasY - eraserSize),
+                eraserSize * 2,
+                eraserSize * 2
+            );
+            
+            for (let i = 3; i < imageData.data.length; i += 4) {
+                if (imageData.data[i] > 0) {
+                    erasedPixels++;
+                    imageData.data[i] = 0;
+                }
+            }
+            
+            ctx.putImageData(
+                imageData,
+                Math.max(0, canvasX - eraserSize),
+                Math.max(0, canvasY - eraserSize)
+            );
+            
+            ctx.save();
+            ctx.globalCompositeOperation = 'destination-out';
+            ctx.beginPath();
+            ctx.arc(canvasX, canvasY, eraserSize, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+            
+            updateProgress();
+            
+            if (Math.random() < 0.3) {
+                createSparkle(x, y);
+            }
+        }
+        
+        function createSparkle(x, y) {
+            const sparkle = document.createElement('div');
+            sparkle.className = 'sparkle';
+            sparkle.textContent = '✨';
+            sparkle.style.left = x + 'px';
+            sparkle.style.top = y + 'px';
+            document.body.appendChild(sparkle);
+            
+            setTimeout(() => sparkle.remove(), 1000);
+        }
+        
+        function handleStart(e) {
+            isErasing = true;
+            const x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const y = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            erase(x, y);
+        }
+        
+        function handleMove(e) {
+            const x = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+            const y = e.type.includes('touch') ? e.touches[0].clientY : e.clientY;
+            
+            eraser.style.left = x + 'px';
+            eraser.style.top = y + 'px';
+            
+            if (isErasing) {
+                erase(x, y);
+            }
+        }
+        
+        function handleEnd() {
+            isErasing = false;
+        }
+        
+        canvas.addEventListener('mousedown', handleStart);
+        canvas.addEventListener('mousemove', handleMove);
+        canvas.addEventListener('mouseup', handleEnd);
+        canvas.addEventListener('mouseleave', handleEnd);
+        
+        canvas.addEventListener('touchstart', handleStart);
+        canvas.addEventListener('touchmove', handleMove);
+        canvas.addEventListener('touchend', handleEnd);
+        
+        document.addEventListener('mousemove', (e) => {
+            eraser.style.left = e.clientX + 'px';
+            eraser.style.top = e.clientY + 'px';
+        });
+        
+        function newDrawing() {
+            createNewDrawing();
+        }
+        
+        function clearAll() {
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            for (let i = 3; i < imageData.data.length; i += 4) {
+                if (imageData.data[i] > 0) {
+                    erasedPixels++;
+                }
+            }
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            updateProgress();
+        }
+    </script>
+</body>
+</html>
