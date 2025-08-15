@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ものさがしゲーム</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            background: #87CEEB;
+        }
+        
+        .game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .game-area {
+            width: 800px;
+            height: 600px;
+            background: #FFEFD5;
+            position: relative;
+            border: 5px solid #DEB887;
+            border-radius: 20px;
+            overflow: hidden;
+        }
+        
+        .object {
+            position: absolute;
+            cursor: pointer;
+            transition: transform 0.2s;
+            font-size: 60px;
+        }
+        
+        .object:hover {
+            transform: scale(1.1);
+        }
+        
+        .target-display {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 20px 40px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            text-align: center;
+            z-index: 100;
+        }
+        
+        .target-display h2 {
+            margin: 0 0 10px 0;
+            font-size: 1.8em;
+            color: #333;
+        }
+        
+        .target-display .target-icon {
+            font-size: 80px;
+            margin: 10px 0;
+        }
+        
+        .score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.5em;
+            color: white;
+            background: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            z-index: 100;
+        }
+        
+        .message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 40px 60px;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+            z-index: 200;
+        }
+        
+        .message h2 {
+            margin: 0 0 20px 0;
+            font-size: 2.5em;
+            color: #333;
+        }
+        
+        .message p {
+            font-size: 1.5em;
+            color: #666;
+            margin: 10px 0;
+        }
+        
+        .start-btn, .retry-btn {
+            margin-top: 20px;
+            padding: 15px 40px;
+            font-size: 1.5em;
+            background: #4ECDC4;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .start-btn:hover, .retry-btn:hover {
+            background: #45B7AA;
+        }
+        
+        .found-effect {
+            position: absolute;
+            font-size: 100px;
+            animation: found 1s ease-out forwards;
+            pointer-events: none;
+            z-index: 50;
+        }
+        
+        @keyframes found {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2) rotate(360deg);
+                opacity: 0;
+            }
+        }
+        
+        .click-indicator {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            border: 3px solid #FF6B6B;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: ripple 0.6s ease-out forwards;
+            z-index: 100;
+        }
+        
+        @keyframes ripple {
+            0% {
+                transform: scale(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(2);
+                opacity: 0;
+            }
+        }
+        
+        .celebration {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 150px;
+            animation: celebrate 1.5s ease-out forwards;
+            pointer-events: none;
+            z-index: 300;
+        }
+        
+        @keyframes celebrate {
+            0% {
+                transform: translate(-50%, -50%) scale(0) rotate(0deg);
+                opacity: 1;
+            }
+            50% {
+                transform: translate(-50%, -50%) scale(1.5) rotate(180deg);
+            }
+            100% {
+                transform: translate(-50%, -50%) scale(0) rotate(360deg);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="game-area" id="gameArea">
+            <div class="target-display" id="targetDisplay" style="display: none;">
+                <h2>みつけてね！</h2>
+                <div class="target-icon" id="targetIcon"></div>
+            </div>
+            
+            <div class="score" id="score" style="display: none;">
+                みつけた: <span id="scoreCount">0</span>
+            </div>
+        </div>
+        
+        <div class="message" id="startMessage">
+            <h2>ものさがしゲーム 🔍</h2>
+            <p>がめんの なかから</p>
+            <p>おだいの ものを みつけてね！</p>
+            <button class="start-btn" onclick="startGame()">スタート！</button>
+        </div>
+        
+        <div class="message" id="gameOverMessage" style="display: none;">
+            <h2>よくできました！ 🎉</h2>
+            <p id="finalScore"></p>
+            <p>またあそんでね！</p>
+            <button class="retry-btn" onclick="resetGame()">もういちど！</button>
+        </div>
+    </div>
+    
+    <script>
+        let score = 0;
+        let currentTarget = null;
+        let audioContext;
+        let gameActive = false;
+        
+        const objects = [
+            { emoji: '🍎', name: 'りんご' },
+            { emoji: '🌸', name: 'さくら' },
+            { emoji: '🐶', name: 'いぬ' },
+            { emoji: '🐱', name: 'ねこ' },
+            { emoji: '🚗', name: 'くるま' },
+            { emoji: '⭐', name: 'ほし' },
+            { emoji: '🌈', name: 'にじ' },
+            { emoji: '🎈', name: 'ふうせん' },
+            { emoji: '🍌', name: 'ばなな' },
+            { emoji: '🐸', name: 'かえる' },
+            { emoji: '🌻', name: 'ひまわり' },
+            { emoji: '🦋', name: 'ちょうちょ' },
+            { emoji: '🐘', name: 'ぞう' },
+            { emoji: '🍊', name: 'みかん' },
+            { emoji: '🚀', name: 'ろけっと' },
+            { emoji: '🎂', name: 'けーき' },
+            { emoji: '🏀', name: 'ぼーる' },
+            { emoji: '🌙', name: 'つき' },
+            { emoji: '☀️', name: 'たいよう' },
+            { emoji: '🐟', name: 'さかな' }
+        ];
+        
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+        
+        function playSound(type) {
+            if (!audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            if (type === 'correct') {
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((freq, index) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.1);
+                    gain.gain.setValueAtTime(0.2, audioContext.currentTime + index * 0.1);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.1 + 0.3);
+                    osc.start(audioContext.currentTime + index * 0.1);
+                    osc.stop(audioContext.currentTime + index * 0.1 + 0.3);
+                });
+            } else if (type === 'wrong') {
+                oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.1);
+            } else if (type === 'complete') {
+                const notes = [261.63, 329.63, 392.00, 523.25];
+                notes.forEach((freq, index) => {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    osc.connect(gain);
+                    gain.connect(audioContext.destination);
+                    osc.frequency.setValueAtTime(freq, audioContext.currentTime + index * 0.2);
+                    gain.gain.setValueAtTime(0.3, audioContext.currentTime + index * 0.2);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + index * 0.2 + 0.5);
+                    osc.start(audioContext.currentTime + index * 0.2);
+                    osc.stop(audioContext.currentTime + index * 0.2 + 0.5);
+                });
+            }
+        }
+        
+        function getRandomPosition() {
+            const gameArea = document.getElementById('gameArea');
+            const x = Math.random() * (gameArea.offsetWidth - 100) + 50;
+            const y = Math.random() * (gameArea.offsetHeight - 200) + 150;
+            return { x, y };
+        }
+        
+        function createObjects() {
+            const gameArea = document.getElementById('gameArea');
+            const objectElements = gameArea.querySelectorAll('.object');
+            objectElements.forEach(el => el.remove());
+            
+            // 現在のお題を含めて8個のオブジェクトを配置
+            const selectedObjects = [currentTarget];
+            const otherObjects = objects.filter(obj => obj.emoji !== currentTarget.emoji);
+            
+            // ランダムに7個選ぶ
+            for (let i = 0; i < 7 && i < otherObjects.length; i++) {
+                const randomIndex = Math.floor(Math.random() * otherObjects.length);
+                const selected = otherObjects.splice(randomIndex, 1)[0];
+                selectedObjects.push(selected);
+            }
+            
+            // シャッフル
+            selectedObjects.sort(() => Math.random() - 0.5);
+            
+            // 配置
+            selectedObjects.forEach(obj => {
+                const objectDiv = document.createElement('div');
+                objectDiv.className = 'object';
+                objectDiv.textContent = obj.emoji;
+                objectDiv.dataset.name = obj.name;
+                
+                const pos = getRandomPosition();
+                objectDiv.style.left = pos.x + 'px';
+                objectDiv.style.top = pos.y + 'px';
+                
+                objectDiv.addEventListener('click', checkObject);
+                gameArea.appendChild(objectDiv);
+            });
+        }
+        
+        function selectNewTarget() {
+            const previousTarget = currentTarget;
+            do {
+                currentTarget = objects[Math.floor(Math.random() * objects.length)];
+            } while (previousTarget && currentTarget.emoji === previousTarget.emoji);
+            
+            document.getElementById('targetIcon').textContent = currentTarget.emoji;
+        }
+        
+        function checkObject(e) {
+            if (!gameActive) return;
+            
+            const clickedObject = e.currentTarget;
+            const clickedName = clickedObject.dataset.name;
+            
+            createClickIndicator(e.clientX, e.clientY);
+            
+            if (clickedName === currentTarget.name) {
+                // 正解！
+                playSound('correct');
+                score++;
+                document.getElementById('scoreCount').textContent = score;
+                
+                const rect = clickedObject.getBoundingClientRect();
+                createFoundEffect(rect.left + rect.width/2, rect.top + rect.height/2);
+                
+                if (score >= 10) {
+                    // ゲームクリア
+                    gameComplete();
+                } else {
+                    // 次のお題へ
+                    setTimeout(() => {
+                        selectNewTarget();
+                        createObjects();
+                    }, 1000);
+                }
+            } else {
+                // 間違い
+                playSound('wrong');
+                clickedObject.style.transform = 'scale(0.9)';
+                setTimeout(() => {
+                    clickedObject.style.transform = '';
+                }, 200);
+            }
+        }
+        
+        function createClickIndicator(x, y) {
+            const indicator = document.createElement('div');
+            indicator.className = 'click-indicator';
+            indicator.style.left = (x - 25) + 'px';
+            indicator.style.top = (y - 25) + 'px';
+            document.body.appendChild(indicator);
+            
+            setTimeout(() => {
+                indicator.remove();
+            }, 600);
+        }
+        
+        function createFoundEffect(x, y) {
+            const effect = document.createElement('div');
+            effect.className = 'found-effect';
+            effect.textContent = '✨';
+            effect.style.left = (x - 50) + 'px';
+            effect.style.top = (y - 50) + 'px';
+            document.body.appendChild(effect);
+            
+            setTimeout(() => {
+                effect.remove();
+            }, 1000);
+        }
+        
+        function gameComplete() {
+            gameActive = false;
+            playSound('complete');
+            
+            const celebration = document.createElement('div');
+            celebration.className = 'celebration';
+            celebration.textContent = '🎉';
+            document.body.appendChild(celebration);
+            
+            setTimeout(() => {
+                celebration.remove();
+                document.getElementById('finalScore').textContent = '10こ みつけたね！';
+                document.getElementById('gameOverMessage').style.display = 'block';
+            }, 1500);
+        }
+        
+        function startGame() {
+            initAudio();
+            gameActive = true;
+            score = 0;
+            document.getElementById('scoreCount').textContent = score;
+            
+            document.getElementById('startMessage').style.display = 'none';
+            document.getElementById('targetDisplay').style.display = 'block';
+            document.getElementById('score').style.display = 'block';
+            
+            selectNewTarget();
+            createObjects();
+        }
+        
+        function resetGame() {
+            gameActive = false;
+            score = 0;
+            currentTarget = null;
+            
+            const gameArea = document.getElementById('gameArea');
+            const objectElements = gameArea.querySelectorAll('.object');
+            objectElements.forEach(el => el.remove());
+            
+            document.getElementById('gameOverMessage').style.display = 'none';
+            document.getElementById('targetDisplay').style.display = 'none';
+            document.getElementById('score').style.display = 'none';
+            document.getElementById('startMessage').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
